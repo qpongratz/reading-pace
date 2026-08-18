@@ -98,17 +98,47 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
   font-variant-numeric:tabular-nums}
 .queue[hidden]{display:none}
 .queue{display:flex;flex-direction:column}
-.item{display:grid;grid-template-columns:1.4rem .8rem 1fr auto auto 1.6rem;gap:.8rem;
-  align-items:center;padding:.7rem 1.1rem;border-bottom:1px solid var(--rule);
-  background:var(--surface)}
+.item{display:grid;gap:.35rem .8rem;align-items:center;
+  grid-template-columns:.8rem 1fr auto auto auto;
+  grid-template-areas:"sw info chip days ctl";
+  padding:.7rem .9rem;border-bottom:1px solid var(--rule);background:var(--surface)}
 .item:last-child{border-bottom:none}
 .item.drag{opacity:.4}
 .item.over{border-top:2px solid var(--brass)}
-.grip{cursor:grab;color:var(--muted);user-select:none;text-align:center}
-.bt{font-weight:500}
-.bm{color:var(--muted);font-size:.8rem}
+.item.clickable{cursor:pointer}
+.item.open{background:var(--surface-2)}
+.item > .sw{grid-area:sw;align-self:start;margin-top:.28rem}
+.binfo{grid-area:info;min-width:0}
+.chipwrap{grid-area:chip}
+.days{grid-area:days}
+.bctl{grid-area:ctl;display:flex;gap:.15rem;align-items:center}
+.bt{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bm{color:var(--muted);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
+.mv{border:none;background:none;color:var(--muted);font-size:.95rem;line-height:1;
+  padding:.25rem .3rem;border-radius:2px}
+.mv:hover:not(:disabled){color:var(--brass);background:var(--surface-2)}
+.mv:disabled{opacity:.25;cursor:default}
+/* the working, shown on tap — spans the full row beneath it */
+.why{grid-column:1/-1;display:grid;gap:.15rem;padding:.55rem 0 .1rem;
+  font-family:"IBM Plex Mono",monospace;font-size:.72rem;
+  border-top:1px dashed var(--rule);margin-top:.45rem}
+.why > div{display:flex;justify-content:space-between;gap:1rem}
+.why > div > span:first-child{color:var(--ink)}
+.why > div > span:last-child{color:var(--muted);text-align:right}
+.why > div:last-child{border-top:1px solid var(--rule);padding-top:.25rem;
+  margin-top:.15rem;font-weight:500}
+@media (max-width:34rem){
+  /* Stack: five columns is too many for a phone. */
+  .item{grid-template-columns:.8rem 1fr auto;
+        grid-template-areas:"sw info ctl" ". chip chip" ". days days"}
+  .days{text-align:left}
+  .chipwrap:empty{display:none}
+}
 .chip{font-family:"IBM Plex Mono",monospace;font-size:.62rem;letter-spacing:.08em;
-  text-transform:uppercase;padding:.15rem .4rem;border-radius:2px;border:1px solid}
+  text-transform:uppercase;padding:.15rem .4rem;border-radius:2px;border:1px solid;
+  background:none;cursor:pointer;white-space:nowrap}
+.chip:hover{background:var(--surface-2)}
 .chip.high{color:var(--hi);border-color:var(--hi)}
 .chip.medium{color:var(--med);border-color:var(--med)}
 .chip.low{color:var(--lo);border-color:var(--lo)}
@@ -138,7 +168,9 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
   /* Narrow: the label column starves the lanes, so stack instead. */
   .gantt{grid-template-columns:1fr;min-width:0;row-gap:0}
   .glabel{justify-content:flex-start;padding:.45rem 0 .15rem}
-  .gmonths{display:none}
+  /* Keep the ruler — bars without a time axis are worse than a narrow one.
+     It spans the single column instead of sitting beside the labels. */
+  .gspacer{display:none}
 }
 .glane{position:relative;height:1.7rem;background:var(--surface-2);border-radius:3px}
 .gmonths{display:grid;border-bottom:1px solid var(--rule);align-self:end}
@@ -176,6 +208,7 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
   justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:.68rem;
   color:var(--muted);font-variant-numeric:tabular-nums}
 .day.blank{visibility:hidden}
+.day.on{cursor:pointer}
 /* the run between endpoints — same hue, dropped to a wash */
 .smear{position:absolute;top:50%;transform:translateY(-50%);height:1.55rem;z-index:0}
 .smear.capL{border-top-left-radius:.8rem;border-bottom-left-radius:.8rem}
@@ -189,6 +222,22 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
 .day.today .num{border-radius:50%;width:1.55rem;height:1.55rem;
   display:flex;align-items:center;justify-content:center}
 .num{position:relative;z-index:1}
+/* Tap target detail. Everything explanatory used to live in title= attributes,
+   which touch devices never show — this is the same information, revealed by a
+   tap on a block or a day rather than a hover. */
+.detail{display:flex;align-items:baseline;gap:.7rem;flex-wrap:wrap;margin-top:.9rem;
+  padding:.55rem .75rem;background:var(--surface-2);border-radius:3px;
+  border-left:3px solid var(--brass);font-size:.84rem}
+.detail[hidden]{display:none}
+.detail .dt{font-weight:500}
+.detail .dm{color:var(--muted);font-family:"IBM Plex Mono",monospace;font-size:.76rem}
+.detail .dx{margin-left:auto;border:none;background:none;color:var(--muted);
+  font-size:1rem;line-height:1;padding:0 .2rem}
+.serieslist{display:flex;flex-wrap:wrap;gap:.4rem .9rem;margin-top:.9rem;
+  font-size:.8rem;color:var(--muted)}
+.serieslist span{display:inline-flex;align-items:center;gap:.4rem}
+.serieslist b{color:var(--ink);font-weight:500}
+.serieslist i{width:.7rem;height:.7rem;border-radius:2px;display:inline-block}
 .finish{font-family:Newsreader,Georgia,serif;font-size:1.35rem;font-weight:300}
 .finish b{color:var(--brass);font-weight:400}
 .stats{display:flex;gap:1.5rem;flex-wrap:wrap;color:var(--muted);font-size:.84rem}
@@ -242,6 +291,8 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
     </div>
     <div class="scroll"><div id="chart"></div></div>
     <div id="cal" class="cal" hidden></div>
+    <div class="detail" id="detail" hidden></div>
+    <div class="serieslist" id="serieslist"></div>
     <div class="stats" id="stats"></div>
   </div>
 
@@ -470,6 +521,44 @@ const washOf = i => (COLORS[i] && COLORS[i].wash) ||
 /* ---------- queue ---------- */
 let dragFrom = null;
 
+/* Which rows have their working shown. Keyed by title so it survives reorder. */
+const OPEN_ROWS = new Set();
+
+function move(from, to) {
+  if (to < 0 || to >= QUEUE.length) return;
+  const [m] = QUEUE.splice(from, 1);
+  QUEUE.splice(to, 0, m);
+  refresh();
+}
+
+/* The sum behind the number. Every estimate should be able to show its own
+   arithmetic — that is the documentation, rather than help text elsewhere. */
+function derivation(b) {
+  const r = b.rate || {};
+  const rows = [];
+  if (b.words_source === "from pages" && b.pages) {
+    rows.push([`${b.pages} pages`,
+               `× ${STATE.words_per_page} words/page = ${b.words.toLocaleString()} words`]);
+  } else if (b.words) {
+    rows.push(["length", `${b.words.toLocaleString()} words`]);
+  }
+  if (b.percent_done > 0) {
+    rows.push([`${b.percent_done}% already read`,
+               `${b.remaining_words.toLocaleString()} words left`]);
+  }
+  const basis = r.basis === "series" ? `${r.n} books in ${r.label}`
+              : r.basis === "author" ? `${r.n} book${r.n > 1 ? "s" : ""} by ${r.label}`
+              : STATE.calibrated ? `your median across ${r.n} books`
+              : "a typical reading pace — nothing measured yet";
+  rows.push([`${Math.round(r.wpm)} words/minute`, basis]);
+  rows.push([`${PACE.toFixed(2)} hours/day`,
+             `= ${Math.round(r.wpm * 60 * PACE).toLocaleString()} words/day`]);
+  rows.push([`${b.days} days`,
+             `${b.remaining_words.toLocaleString()} ÷ ` +
+             `${Math.round(r.wpm * 60 * PACE).toLocaleString()}`]);
+  return rows;
+}
+
 function renderQueue() {
   const q = $("#queue");
   q.innerHTML = "";
@@ -477,9 +566,11 @@ function renderQueue() {
     q.innerHTML = `<div class="empty">Nothing queued yet. Search above to add a book.</div>`;
     return;
   }
-  (PLAN ? PLAN.books : QUEUE).forEach((b, i) => {
+  const books = PLAN ? PLAN.books : QUEUE;
+  books.forEach((b, i) => {
     const el = document.createElement("div");
-    el.className = "item"; el.draggable = true;
+    el.className = "item";
+    el.draggable = true;
 
     const rate = b.rate || {};
     const meta = [b.author, b.series,
@@ -489,12 +580,18 @@ function renderQueue() {
                  .filter(Boolean).join(" · ");
 
     el.innerHTML = `
-      <span class="grip" aria-hidden="true">⠿</span>
       <span class="sw"></span>
-      <span><span class="bt"></span><br><span class="bm"></span></span>
-      <span class="chipwrap"></span>
-      <span class="days"></span>
-      <button class="x" title="Remove">×</button>`;
+      <div class="binfo">
+        <div class="bt"></div>
+        <div class="bm"></div>
+      </div>
+      <div class="chipwrap"></div>
+      <div class="days"></div>
+      <div class="bctl">
+        <button class="mv" data-d="-1" title="Move up" aria-label="Move up">↑</button>
+        <button class="mv" data-d="1" title="Move down" aria-label="Move down">↓</button>
+        <button class="x" title="Remove" aria-label="Remove">×</button>
+      </div>`;
     el.querySelector(".bt").textContent = b.title || "(untitled)";
     el.querySelector(".bm").textContent = meta;
     // The swatch is the legend: it ties this row to its block on the calendar,
@@ -503,12 +600,10 @@ function renderQueue() {
     el.querySelector(".sw").title = b.series || b.title || "";
 
     if (rate.wpm) {
-      const c = document.createElement("span");
+      const c = document.createElement("button");
       c.className = "chip " + (rate.confidence || "low");
       c.textContent = `${Math.round(rate.wpm)} wpm · ${rate.basis}`;
-      c.title = rate.basis === "global"
-        ? `No reading history for this author — using your overall median across ${rate.n} books.`
-        : `From ${rate.n} book${rate.n > 1 ? "s" : ""} you've read (${rate.label}).`;
+      c.title = "Show the working";
       el.querySelector(".chipwrap").appendChild(c);
     }
 
@@ -521,13 +616,45 @@ function renderQueue() {
       d.className = "needlen";
       const inp = document.createElement("input");
       inp.type = "number"; inp.placeholder = "pages"; inp.min = "1";
-      inp.onchange = () => {
-        QUEUE[i].pages = parseInt(inp.value) || null; refresh();
-      };
+      inp.setAttribute("aria-label", "Page count");
+      inp.onchange = () => { QUEUE[i].pages = parseInt(inp.value) || null; refresh(); };
       d.appendChild(inp);
     }
 
-    el.querySelector(".x").onclick = () => { QUEUE.splice(i, 1); refresh(); };
+    // Reordering by button rather than drag alone: HTML5 drag events never fire
+    // on touch, and reordering is the whole point of this tool. This also makes
+    // it reachable by keyboard and screen reader. Drag stays as a shortcut.
+    el.querySelectorAll(".mv").forEach(btn => {
+      const dir = +btn.dataset.d;
+      btn.disabled = (i + dir < 0 || i + dir >= books.length);
+      btn.onclick = ev => { ev.stopPropagation(); move(i, i + dir); };
+    });
+    el.querySelector(".x").onclick = ev => {
+      ev.stopPropagation(); QUEUE.splice(i, 1); refresh();
+    };
+
+    const key = b.title || String(i);
+    if (b.days && OPEN_ROWS.has(key)) {
+      const box = document.createElement("div");
+      box.className = "why";
+      for (const [lhs, rhs] of derivation(b)) {
+        const row = document.createElement("div");
+        row.innerHTML = `<span></span><span></span>`;
+        row.children[0].textContent = lhs;
+        row.children[1].textContent = rhs;
+        box.appendChild(row);
+      }
+      el.appendChild(box);
+      el.classList.add("open");
+    }
+    if (b.days) {
+      el.classList.add("clickable");
+      el.onclick = ev => {
+        if (ev.target.closest("button:not(.chip), input")) return;
+        OPEN_ROWS.has(key) ? OPEN_ROWS.delete(key) : OPEN_ROWS.add(key);
+        renderQueue();
+      };
+    }
 
     el.addEventListener("dragstart", () => { dragFrom = i; el.classList.add("drag"); });
     el.addEventListener("dragend", () => {
@@ -539,15 +666,13 @@ function renderQueue() {
     el.addEventListener("drop", ev => {
       ev.preventDefault();
       if (dragFrom === null || dragFrom === i) return;
-      const [m] = QUEUE.splice(dragFrom, 1);
-      QUEUE.splice(i, 0, m);
-      refresh();
+      move(dragFrom, i);
     });
     q.appendChild(el);
   });
 }
 
-const fmt = iso => iso ? new Date(iso + "T12:00:00")
+const fmt = d => d ? new Date(d + "T12:00:00")
   .toLocaleDateString("en", {month: "short", day: "numeric"}) : "";
 
 /* ---------- timeline ---------- */
@@ -594,6 +719,7 @@ function renderChart() {
 
   // header row: blank label cell + month ruler
   const spacer = document.createElement("div");
+  spacer.className = "gspacer";
   g.appendChild(spacer);
   const ruler = document.createElement("div");
   ruler.className = "gmonths";
@@ -614,6 +740,12 @@ function renderChart() {
     txt.className = "name";
     txt.textContent = name;
     lab.append(sw, txt);
+    lab.onclick = () => {
+      const bs = done.filter(b => b._lane === li);
+      const d = bs.reduce((a, b) => a + b.days, 0);
+      showDetail(name, `${bs.length} book${bs.length > 1 ? "s" : ""} · ${d} days · ` +
+                       `${fmt(bs[0].start)} to ${fmt(bs[bs.length - 1].end)}`);
+    };
     g.appendChild(lab);
 
     const lane = document.createElement("div");
@@ -626,8 +758,10 @@ function renderChart() {
       el.style.left = l + "%";
       el.style.width = w + "%";
       el.style.background = fillOf(b._i);
-      el.title = `${b.title} — ${b.days} days, ${fmt(b.start)} to ${fmt(b.end)}` +
-                 (b.rate ? ` · ${Math.round(b.rate.wpm)} wpm (${b.rate.basis})` : "");
+      const meta = `${b.days} days · ${fmt(b.start)} to ${fmt(b.end)}` +
+                   (b.rate ? ` · ${Math.round(b.rate.wpm)} wpm (${b.rate.basis})` : "");
+      el.title = `${b.title} — ${meta}`;
+      el.onclick = () => showDetail(b.title, meta);
       // Inside the block if it fits, the volume number if it nearly fits,
       // nothing at all if it doesn't — the lane label already names the series.
       if (w > 14) el.textContent = b.title;
@@ -643,6 +777,19 @@ function renderChart() {
     `<span><b>${PLAN.total_days}</b> days</span>` +
     `<span><b>${(totalWords / 1e6).toFixed(2)}M</b> words</span>` +
     `<span><b>${(PACE * PLAN.total_days).toFixed(0)}</b> hours of reading</span>`;
+}
+
+/* ---------- tap detail ----------
+   Touch has no hover, so every title= attribute in the two charts is invisible
+   on a phone. Same information, revealed by tapping the mark instead. */
+function showDetail(title, meta) {
+  const d = $("#detail");
+  d.innerHTML = `<span class="dt"></span><span class="dm"></span>
+                 <button class="dx" aria-label="Dismiss">×</button>`;
+  d.querySelector(".dt").textContent = title;
+  d.querySelector(".dm").textContent = meta;
+  d.querySelector(".dx").onclick = () => { d.hidden = true; };
+  d.hidden = false;
 }
 
 /* ---------- month grid ----------
@@ -748,8 +895,12 @@ function renderCalendar() {
       cell.appendChild(mark);
 
       const which = !contPrev && !contNext ? "all of it"
-        : !contPrev ? "starts" : "finishes";
+        : !contPrev ? "starts here" : !contNext ? "finishes here" : "in progress";
       cell.title = `${o.title} — ${which}`;
+      const book = done.find(x => x._i === o.i);
+      cell.onclick = () => showDetail(o.title,
+        `${which} · ${day.toLocaleDateString("en", {month: "long", day: "numeric"})}` +
+        (book ? ` · ${book.days} days total` : ""));
       grid.appendChild(cell);
     }
     box.appendChild(mon);
@@ -784,12 +935,47 @@ function setQueueOpen(open) {
 }
 $("#qtoggle").onclick = () => setQueueOpen(!QOPEN);
 
+/* Per-series totals for whatever is queued. Answers "how much of my year does
+   this series actually eat" without needing to know the series' full length. */
+function renderSeries() {
+  const box = $("#serieslist");
+  const done = ((PLAN && PLAN.books) || []).map((b, i) => ({...b, _i: i}))
+                                           .filter(b => b.days);
+  box.innerHTML = "";
+  if (done.length < 2) return;
+
+  const groups = new Map();
+  for (const b of done) {
+    const key = (b.series || "").trim() || b.title || "—";
+    if (!groups.has(key)) groups.set(key, {n: 0, days: 0, words: 0, i: b._i});
+    const g = groups.get(key);
+    g.n += 1;
+    g.days += b.days;
+    g.words += b.remaining_words || 0;
+  }
+  if (groups.size < 2) return;
+
+  for (const [name, g] of [...groups].sort((a, b) => b[1].days - a[1].days)) {
+    const el = document.createElement("span");
+    const sw = document.createElement("i");
+    sw.style.background = fillOf(g.i);
+    const txt = document.createElement("span");
+    txt.innerHTML = `<b></b> · ${g.n} book${g.n > 1 ? "s" : ""} · ` +
+                    `${(g.words / 1000).toFixed(0)}k words · <b></b> days`;
+    txt.querySelector("b").textContent = name;
+    txt.querySelectorAll("b")[1].textContent = g.days;
+    el.append(sw, txt);
+    box.appendChild(el);
+  }
+}
+
 /* Render every visible view. Rendering only the "active" one let the other go
    stale behind it — a pace change redrew the timeline while the calendar below
    kept showing the old dates until you toggled tabs. */
 function draw() {
   if (VIEW !== "calendar") renderChart();
   if (VIEW !== "timeline") renderCalendar();
+  renderSeries();
   renderQueueHead();
 }
 
@@ -818,6 +1004,7 @@ async function refresh() {
     return;
   }
   PLAN = await api("/api/plan", {books: QUEUE, hours_per_day: PACE});
+  $("#detail").hidden = true;
   renderQueue();
   draw();
   const last = [...(PLAN.books || [])].reverse().find(b => b.end);
