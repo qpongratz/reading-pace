@@ -500,13 +500,25 @@ function paint(slot, nth) {
   };
 }
 
+/* Group by series when it is known, otherwise by author. Measured against one
+   reader's history, series told us almost nothing the author didn't — 25 of 29
+   books had an identical rate either way, and only 3 of 44 authors had more
+   than one series measured at all. So series is a presentation nicety, and
+   author (which every source provides, unlike series) recovers the grouping
+   for free. Falls through to the title for a book with neither. */
+function groupKey(b) {
+  const series = (b.series || "").trim();
+  if (series) return "s:" + series.toLowerCase();
+  const author = ((b.author || "").split(",")[0] || "").trim();
+  if (author) return "a:" + author.toLowerCase();
+  return "b:" + (b.title || "").trim().toLowerCase();
+}
+
 function assignColors(books) {
   const slotOf = new Map(), countOf = new Map();
   let next = 0;
   return books.map(b => {
-    const key = (b.series || "").trim()
-      ? "s:" + b.series.trim().toLowerCase()
-      : "b:" + (b.title || "").trim().toLowerCase();
+    const key = groupKey(b);
     if (!slotOf.has(key)) slotOf.set(key, next++);
     const slot = slotOf.get(key);
     const nth = countOf.get(key) || 0;
@@ -703,12 +715,12 @@ function renderChart() {
   // itself in, instead of a two-pixel sliver on a shared track.
   const laneOf = new Map(), laneName = [], laneSw = [];
   for (const b of done) {
-    const key = (b.series || "").trim()
-      ? "s:" + b.series.trim().toLowerCase()
-      : "b:" + (b.title || "").trim().toLowerCase();
+    const key = groupKey(b);
     if (!laneOf.has(key)) {
       laneOf.set(key, laneName.length);
-      laneName.push((b.series || "").trim() || b.title || "—");
+      laneName.push((b.series || "").trim() ||
+                    ((b.author || "").split(",")[0] || "").trim() ||
+                    b.title || "—");
       laneSw.push(b._i);
     }
     b._lane = laneOf.get(key);
@@ -946,7 +958,8 @@ function renderSeries() {
 
   const groups = new Map();
   for (const b of done) {
-    const key = (b.series || "").trim() || b.title || "—";
+    const key = (b.series || "").trim() ||
+                ((b.author || "").split(",")[0] || "").trim() || b.title || "—";
     if (!groups.has(key)) groups.set(key, {n: 0, days: 0, words: 0, i: b._i});
     const g = groups.get(key);
     g.n += 1;

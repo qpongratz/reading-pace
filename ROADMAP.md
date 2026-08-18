@@ -50,11 +50,23 @@ catalog, say twelve days, and every downstream number is seeded. This is the
 feature that makes the tracker genuinely optional.
 
 ### 2. Bundled catalog
-OpenLibrary at runtime is the blocker for the static version, and it's flaky
-anyway — 88% hit rate, ~4s a book, one 20-second stall during testing.
-OpenLibrary publishes bulk dumps; distil popular fiction with page counts into a
-compressed index and ship it. Search becomes instant, offline, and quota-free.
-Refresh yearly.
+Not because live lookups are impossible — OpenLibrary and Wikidata both send
+`access-control-allow-origin: *`, so a page on GitHub Pages can query them
+directly. The CSP restriction that blocks this applies to Artifacts, not Pages.
+
+The reason to precompute is **speed and reliability**: 88% hit rate, ~4s a book,
+one 20-second stall during testing. Harvest a seed list of fiction series and
+authors through the search API — which already returns `number_of_pages_median`,
+doing the edition-to-work aggregation for us — and ship the result. Roughly
+50–100k books lands around 2–4 MB gzipped.
+
+Processing the full dumps (`ol_dump_works` 4.0 GB, `ol_dump_editions` 12.5 GB)
+would yield 1M+ books, which is far more than anyone queues. Not worth it.
+
+Staleness is narrow but lands badly — a handful of new releases a year, and they
+are exactly the books you most want to plan. The live fallback already in the
+search UI covers that case: local results render first, OpenLibrary folds in
+underneath when the index misses.
 
 ### 3. Mobile — mostly done
 - ~~Reorder does not work on touch~~ — move up/down buttons, which also made it
@@ -105,6 +117,16 @@ long a series actually is — that waits on the bundled catalog.
   device in retrievable form. Not worth building.
 - Bundling the calibrator back in. It was a detour on the way here, and keeping
   it separate is what forced the planner to stand on its own.
+
+**Series metadata is not worth chasing.** Measured against one reader's history,
+knowing the series told us almost nothing the author didn't: 25 of 29 books had
+an identical rate either way, only 3 of 44 authors had more than one series
+measured, and the largest apparent difference turned out to be one series filed
+under two names rather than real signal. Grouping and colour now fall back to
+**author**, which every metadata source provides — unlike series, which
+OpenLibrary returns empty even when asked for it and Wikidata only covers ~80%
+of a real TBR after name normalisation. This drops Wikidata from the data
+pipeline entirely and leaves the join a single-source problem.
 
 ## Open questions
 

@@ -33,10 +33,10 @@ function extract(name) {
 }
 
 const src = ["const HUES = 8, TIERS = 3;",
-             extract("paint"), extract("assignColors"), extract("derivation")]
-            .join("\n");
-const { paint, assignColors, derivation } =
-  new Function(src + "; return {paint, assignColors, derivation};")();
+             extract("paint"), extract("groupKey"), extract("assignColors"),
+             extract("derivation")].join("\n");
+const { paint, groupKey, assignColors, derivation } =
+  new Function(src + "; return {paint, groupKey, assignColors, derivation};")();
 
 let failures = 0;
 function check(label, cond, detail) {
@@ -69,6 +69,24 @@ console.log("series grouping");
   check("consecutive volumes alternate so neighbours stay separable",
         s[1].fill !== s[0].fill && s[0].fill === s[2].fill);
   check("a second series takes the next slot", s[3].fill.includes("--s2"));
+}
+
+console.log("grouping falls back to author when series is absent");
+{
+  const q = [
+    { title: "Demon in White", author: "Christopher Ruocchio" },
+    { title: "Kingdoms of Death", author: "Christopher Ruocchio" },
+    { title: "This Inevitable Ruin", author: "Matt Dinniman" },
+    { title: "Howling Dark", author: "Christopher Ruocchio", series: "Sun Eater" },
+  ];
+  const g = assignColors(q);
+  check("same author shares a hue with no series metadata",
+        g[0].fill.includes("--s1") && g[1].fill.includes("--s1"));
+  check("a different author takes the next slot", g[2].fill.includes("--s2"));
+  check("series still wins where it exists", groupKey(q[3]) === "s:sun eater");
+  check("author key is used otherwise",
+        groupKey(q[0]) === "a:christopher ruocchio");
+  check("title is the last resort", groupKey({ title: "Orphan" }) === "b:orphan");
 }
 
 console.log("standalone books");
