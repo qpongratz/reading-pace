@@ -13,9 +13,10 @@ reads *from* them rather than replacing them.
 
 **Static page first, server second.** The planner should be a single page with
 `localStorage`, deployable to GitHub Pages, working forever with no install. The
-Python server exists because it can reach OpenLibrary and read Kobo databases,
-and a published page can do neither. Everything the server does at runtime needs
-an offline answer before the static version ships.
+Python server exists only because it can reach OpenLibrary, which a published
+page cannot. Two things block the static version: search needs a bundled
+catalog, and `plan.py` needs porting to JavaScript. Until both are done there is
+nothing for Pages to usefully host.
 
 **Calibration is a companion project, not a dependency.** Measuring reading
 speed from an e-reader is a genuinely interesting artifact on its own, but it
