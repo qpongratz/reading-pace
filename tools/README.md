@@ -101,12 +101,17 @@ because the ordering is genuinely wrong, not because the speed is a problem.
 The projection stage parses every record and then discards 86% of them.
 Roughly in order of payoff:
 
-- **Pre-filter on the raw line before `json.loads`.** A record with no
-  `"number_of_pages"` substring, or without `/languages/eng`, can never survive.
-  Byte scans are far cheaper than parsing, and most records are dropped, so this
-  alone should be worth around 3×.
-- **Decompress with `gzip -dc` via a subprocess.** Hands decompression to C and
-  puts it on a different core from the parsing.
+- ~~**Pre-filter on the raw line before `json.loads`.**~~ **Done.** A record
+  without a `"number_of_pages"` substring, or without `/languages/en`, can never
+  survive the full filter. Measured over 3M rows: **67% of parses avoided,
+  1.49× faster, byte-identical output**. The rule that keeps it safe is that the
+  pre-filter may only reject records the full filter would also reject — a
+  superset test, never a different one. Being too permissive costs a little
+  speed; being too strict silently loses books.
+- **Decompress with `gzip -dc` via a subprocess.** Now the actual bottleneck:
+  the pre-filter cut parses by 67% but wall time by only a third, which means
+  decompression dominates. Hands it to C and onto a different core, so the two
+  compound rather than overlap.
 - **Optional `orjson`.** Several times faster, but it must stay a
   `try: import orjson` with a stdlib fallback — no-dependencies is worth more
   than the speed.

@@ -146,6 +146,22 @@ def stage_ratings(inp, force):
 
 # ── project ──────────────────────────────────────────────────────────────────
 
+# Cheap pre-filter, applied to the raw line before any JSON parsing.
+#
+# The one rule: this may only reject records the full filter would also reject.
+# It is a superset test, so anything it lets through still faces the real checks
+# — being too permissive costs a little speed, being too strict silently loses
+# books. Both markers below are strictly necessary downstream: no page count
+# means no length, and a language key that does not even contain "/languages/en"
+# cannot end with "/eng" or "/en".
+PAGES_MARKER = '"number_of_pages"'
+ENGLISH_MARKER = "/languages/en"
+
+
+def worth_parsing(line):
+    return PAGES_MARKER in line and ENGLISH_MARKER in line
+
+
 def ref_key(x):
     """Pull an Open Library key out of a reference.
 
@@ -229,7 +245,20 @@ def stage_project(inp, force):
             seen += 1
             if seen % 5_000_000 == 0:
                 log(f"    {seen:,} rows, {kept:,} editions kept, {auths:,} authors")
-            p = line.rstrip("\n").split("\t")
+            # Cheapest checks first: 86% of rows are dropped, and parsing them
+            # to find that out is the single biggest cost in this stage.
+            if combined:
+                if line.startswith("/type/edition"):
+                    if not worth_parsing(line):
+                        reasons["prefiltered"] += 1
+                        continue
+                elif not line.startswith("/type/author"):
+                    continue
+            elif not worth_parsing(line):
+                reasons["prefiltered"] += 1
+                continue
+
+            p = line.rstrip("\n").split("\t", 4)
             if len(p) < 5:
                 continue
             kind = p[0]
