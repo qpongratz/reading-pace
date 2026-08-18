@@ -128,6 +128,16 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
 .why > div > span:last-child{color:var(--muted);text-align:right}
 .why > div:last-child{border-top:1px solid var(--rule);padding-top:.25rem;
   margin-top:.15rem;font-weight:500}
+.multrow{display:flex!important;align-items:center;gap:.5rem;flex-wrap:wrap;
+  border-top:1px dashed var(--rule)!important;margin-top:.4rem;padding-top:.5rem;
+  font-weight:400!important;justify-content:flex-start!important}
+.multrow > span:first-child{color:var(--muted)}
+.multbtns{display:flex;gap:.2rem;flex-wrap:wrap}
+.multbtns button{font-family:"Public Sans",sans-serif;font-size:.7rem;
+  padding:.2rem .45rem;border-radius:2px;text-transform:none;letter-spacing:0}
+.multrow input{width:4.2rem;padding:.2rem .35rem;font:inherit;font-size:.72rem;
+  background:var(--surface);border:1px solid var(--rule);border-radius:2px;
+  color:var(--ink);margin-left:auto}
 @media (max-width:34rem){
   /* Stack: five columns is too many for a phone. */
   .item{grid-template-columns:.8rem 1fr auto;
@@ -563,12 +573,64 @@ function derivation(b) {
               : STATE.calibrated ? `your median across ${r.n} books`
               : "a typical reading pace — nothing measured yet";
   rows.push([`${Math.round(r.wpm)} words/minute`, basis]);
+  const mult = b.rate_multiplier || 1;
   rows.push([`${PACE.toFixed(2)} hours/day`,
              `= ${Math.round(r.wpm * 60 * PACE).toLocaleString()} words/day`]);
+  if (mult !== 1) {
+    rows.push([`× ${mult.toFixed(2)} for this book`,
+               `= ${(b.words_per_day || 0).toLocaleString()} words/day`]);
+  }
   rows.push([`${b.days} days`,
              `${b.remaining_words.toLocaleString()} ÷ ` +
-             `${Math.round(r.wpm * 60 * PACE).toLocaleString()}`]);
+             `${(b.words_per_day || 0).toLocaleString()}`]);
   return rows;
+}
+
+/* Per-book rate correction. Two real effects push a book off its predicted
+   rate and neither is knowable in advance: prose density (Erikson runs ~181 wpm
+   against Carl's ~300) and how much the book grips you. Both scale the same
+   product, so one dial covers both. Lives inside the working panel, which is
+   already behind a tap — advanced by construction rather than by a settings
+   screen. */
+const MULT_PRESETS = [[0.6, "slog"], [0.8, "slower"], [1, "normal"],
+                      [1.3, "faster"], [1.7, "page-turner"]];
+
+function multiplierControl(b, i) {
+  const cur = b.rate_multiplier || 1;
+  const wrap = document.createElement("div");
+  wrap.className = "multrow";
+  const lab = document.createElement("span");
+  lab.textContent = "this book reads";
+  wrap.appendChild(lab);
+
+  const set = v => {
+    QUEUE[i].rate_multiplier = v === 1 ? undefined : v;
+    refresh();
+  };
+  const group = document.createElement("span");
+  group.className = "multbtns";
+  for (const [v, name] of MULT_PRESETS) {
+    const btn = document.createElement("button");
+    btn.textContent = name;
+    btn.title = `${v}× your usual rate for ${b.author || "this author"}`;
+    if (Math.abs(cur - v) < 0.01) btn.classList.add("on");
+    btn.onclick = ev => { ev.stopPropagation(); set(v); };
+    group.appendChild(btn);
+  }
+  wrap.appendChild(group);
+
+  const num = document.createElement("input");
+  num.type = "number"; num.min = "0.25"; num.max = "4"; num.step = "0.05";
+  num.value = cur.toFixed(2);
+  num.setAttribute("aria-label", "Rate multiplier");
+  num.onclick = ev => ev.stopPropagation();
+  num.onchange = ev => {
+    ev.stopPropagation();
+    const v = parseFloat(num.value);
+    set(isFinite(v) && v > 0 ? Math.min(4, Math.max(0.25, v)) : 1);
+  };
+  wrap.appendChild(num);
+  return wrap;
 }
 
 function renderQueue() {
@@ -656,6 +718,7 @@ function renderQueue() {
         row.children[1].textContent = rhs;
         box.appendChild(row);
       }
+      box.appendChild(multiplierControl(b, i));
       el.appendChild(box);
       el.classList.add("open");
     }

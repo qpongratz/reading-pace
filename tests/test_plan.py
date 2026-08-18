@@ -177,6 +177,40 @@ class TestProjection(unittest.TestCase):
         self.assertEqual(got["basis"], "global")
         self.assertAlmostEqual(got["wpm"], CAL["global_wpm"])
 
+    def test_rate_multiplier_scales_the_days(self):
+        base = plan.project([self.book()], self.hpd, self.r,
+                            start=date(2026, 1, 1))["books"][0]
+        fast = plan.project([self.book(rate_multiplier=2.0)], self.hpd, self.r,
+                            start=date(2026, 1, 1))["books"][0]
+        slow = plan.project([self.book(rate_multiplier=0.5)], self.hpd, self.r,
+                            start=date(2026, 1, 1))["books"][0]
+        self.assertEqual(base["days"], 10)
+        self.assertEqual(fast["days"], 5)
+        self.assertEqual(slow["days"], 20)
+
+    def test_multiplier_defaults_to_one_and_survives_junk(self):
+        for bad in (None, "", "abc", 0, -3):
+            b = plan.project([self.book(rate_multiplier=bad)], self.hpd, self.r,
+                             start=date(2026, 1, 1))["books"][0]
+            self.assertEqual(b["rate_multiplier"], 1.0, f"input {bad!r}")
+            self.assertEqual(b["days"], 10)
+
+    def test_multiplier_is_clamped(self):
+        hi = plan.project([self.book(rate_multiplier=999)], self.hpd, self.r,
+                          start=date(2026, 1, 1))["books"][0]
+        lo = plan.project([self.book(rate_multiplier=0.001)], self.hpd, self.r,
+                          start=date(2026, 1, 1))["books"][0]
+        self.assertEqual(hi["rate_multiplier"], plan.MAX_MULTIPLIER)
+        self.assertEqual(lo["rate_multiplier"], plan.MIN_MULTIPLIER)
+
+    def test_multiplier_and_percent_read_compose(self):
+        b = plan.project([self.book(percent_read=50, rate_multiplier=2.0)],
+                         self.hpd, self.r, start=date(2026, 1, 1))["books"][0]
+        self.assertEqual(b["remaining_words"], 60000)
+        # 60000 / (12000 * 2) = 2.5 days; round() is banker's rounding, so 2
+        self.assertEqual(b["days"], 2)
+        self.assertEqual(b["words_per_day"], 24000)
+
     def test_empty_queue(self):
         out = plan.project([], self.hpd, self.r)
         self.assertEqual(out["books"], [])

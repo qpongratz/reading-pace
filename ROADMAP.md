@@ -128,11 +128,29 @@ OpenLibrary returns empty even when asked for it and Wikidata only covers ~80%
 of a real TBR after name normalisation. This drops Wikidata from the data
 pipeline entirely and leaves the join a single-source problem.
 
+**Two per-book effects, not one.** Measured across 58 books, reading speed and
+how much of the day a book takes are **independent** (r = +0.11) and both real:
+
+- *Density* — words per minute the prose costs. Erikson measures 181 wpm against
+  Dungeon Crawler Carl's ~300, across 76 hours of reading. History measures this
+  per author; it is what the calibration file supplies.
+- *Grip* — how much of your day the book eats. Blindsight is dense (186 wpm) yet
+  read avidly (0.93 h/day); The Color of Magic is quick prose (233 wpm) picked at
+  over months (0.00 h/day). No data predicts this.
+
+Both scale the same product, so a single **per-book rate multiplier** covers
+both, and it lives in the working panel — advanced by construction rather than
+by a settings screen.
+
+StoryGraph's crowd "pace" tag was considered and dropped. It conflates the two
+(a reader calling a book "slow" may mean thick prose, a crawling plot, or that
+it took them four months), there is no API, and scraping a small indie company
+is worse than scraping Open Library, not better.
+
 ## Open questions
 
-- Where does per-book difficulty come from for someone with no reading history?
-  Crowd pace tags, genre, or prose features measured from an EPUB — all
-  plausible, none tested.
-- Do the author multipliers transfer between readers? If dense prose is slower
-  for everyone by roughly the same factor, they ship as defaults. Untested with
-  one reader's data.
+- Do the author multipliers transfer between readers well enough to ship as
+  defaults for someone with no history at all?
+- Is `pages × 365` improvable without word counts? The factor is systematically
+  per-author (Erikson's pages run 443 words, Egan's 324), so the calibration
+  file could carry words-per-page alongside wpm wherever both are known.

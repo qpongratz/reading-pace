@@ -112,6 +112,21 @@ class Rates:
                                "global": "low"}[basis]}
 
 
+MIN_MULTIPLIER, MAX_MULTIPLIER = 0.25, 4.0
+
+
+def clamp_multiplier(v):
+    """A per-book rate correction, bounded so a typo cannot produce a plan
+    measured in decades or in minutes."""
+    try:
+        m = float(v)
+    except (TypeError, ValueError):
+        return 1.0
+    if m <= 0:
+        return 1.0
+    return max(MIN_MULTIPLIER, min(MAX_MULTIPLIER, m))
+
+
 def words_for(book):
     """Word count from whatever the book carries: words, then pages, else None."""
     if book.get("words"):
@@ -141,12 +156,20 @@ def project(queue, hours_per_day, rates, start=None, start_fraction=None):
         if i == 0 and start_fraction:
             done = start_fraction
         remaining = words * (1.0 - done)
-        per_day = rate["wpm"] * 60 * hours_per_day
+
+        # A per-book correction the reader sets by hand. Two real effects push a
+        # book off its predicted rate and neither is fully knowable in advance:
+        # prose density, which history measures per author but not per book, and
+        # how much the book grips you, which no data can supply. They both scale
+        # the same product, so one dial covers both.
+        mult = clamp_multiplier(book.get("rate_multiplier"))
+        per_day = rate["wpm"] * 60 * hours_per_day * mult
         days = max(1, round(remaining / per_day))
         finish = day + timedelta(days=days - 1)
         out.append({**book, "words": words, "words_source": wsrc,
                     "percent_done": round(done * 100),
                     "remaining_words": round(remaining), "days": days,
+                    "rate_multiplier": mult, "words_per_day": round(per_day),
                     "start": str(day), "end": str(finish), "rate": rate})
         day = finish + timedelta(days=1)
     scheduled = [b for b in out if b.get("end")]
