@@ -91,3 +91,24 @@ On rebuild, `emit` diffs against the previous catalog, reports what was added
 and dropped, warns if more than 10% of the old catalog vanished, and keeps the
 old file as `catalog.json.previous`. A silent rebuild that quietly halved the
 catalog would be worse than a stale one.
+
+## Making it faster
+
+The projection stage parses every record and then discards 86% of them, which is
+the wrong order. Roughly in order of payoff:
+
+- **Pre-filter on the raw line before `json.loads`.** A record with no
+  `"number_of_pages"` substring, or without `/languages/eng`, can never survive.
+  Byte scans are far cheaper than parsing, and most records are dropped, so this
+  alone should be worth around 3×.
+- **Decompress with `gzip -dc` via a subprocess.** Hands decompression to C and
+  puts it on a different core from the parsing.
+- **Optional `orjson`.** Several times faster, but it must stay a
+  `try: import orjson` with a stdlib fallback — no-dependencies is worth more
+  than the speed.
+- **Parallel parsing.** A gzip stream can't be seeked, so decompression stays
+  serial, but parsing could fan out to a process pool. Probably more complexity
+  than it earns.
+
+The first two should take a full build from roughly 45 minutes to under 15,
+with no dependencies and no structural change.
