@@ -79,11 +79,41 @@ def find_inputs():
             "authors": authors, "ratings": ratings}
 
 
+def done_marker(path):
+    return path + ".done"
+
+
+def mark_done(path):
+    """Record that a stage finished. Written only after the output is closed."""
+    with open(done_marker(path), "w") as f:
+        f.write(str(os.path.getsize(path)))
+
+
 def fresh(path, force):
-    """True when a stage's output can be reused."""
+    """True when a stage's output can be reused.
+
+    Checks for a completion marker rather than just the file, because a stage
+    that was interrupted leaves a perfectly plausible-looking partial file
+    behind — non-empty, valid, and missing most of the corpus. Resuming from
+    that would silently build a catalog from a fraction of the dump.
+    """
     if force or not os.path.exists(path):
         return False
-    return os.path.getsize(path) > 0
+    marker = done_marker(path)
+    if not os.path.exists(marker):
+        log(f"  {os.path.basename(path)} is incomplete (no completion marker)"
+            f" — redoing it")
+        return False
+    try:
+        expected = int(open(marker).read().strip())
+    except Exception:
+        return False
+    actual = os.path.getsize(path)
+    if actual != expected:
+        log(f"  {os.path.basename(path)} changed since it was written"
+            f" ({actual:,} vs {expected:,}) — redoing it")
+        return False
+    return actual > 0
 
 
 # ── ratings ──────────────────────────────────────────────────────────────────
@@ -108,8 +138,9 @@ def stage_ratings(inp, force):
             if p[3][:4] > latest.get(key, ""):
                 latest[key] = p[3][:4]
     os.makedirs(WORK, exist_ok=True)
-    json.dump({k: [c, latest.get(k, "")] for k, c in counts.items()},
-              open(RATINGS_JSON, "w"))
+    with open(RATINGS_JSON, "w") as f:
+        json.dump({k: [c, latest.get(k, "")] for k, c in counts.items()}, f)
+    mark_done(RATINGS_JSON)
     log(f"  {sum(counts.values()):,} ratings over {len(counts):,} works")
 
 
@@ -204,6 +235,8 @@ def stage_project(inp, force):
             fout.write(row + "\n")
             kept += 1
 
+    mark_done(PROJECTED)
+    mark_done(AUTHOR_NAMES)
     log(f"  {seen:,} rows read, {kept:,} editions projected, {auths:,} authors")
     for r, c in reasons.most_common():
         log(f"    dropped, {r}: {c:,}")
@@ -230,6 +263,7 @@ def stage_authors_split(inp, force):
             if name:
                 out.write(f"{p[1][9:]}\t{name[:80]}\n")
                 n += 1
+    mark_done(AUTHOR_NAMES)
     log(f"  {n:,} author names")
 
 
@@ -243,6 +277,7 @@ def stage_sort(force):
     subprocess.run(["sort", "-t", UNIT, "-k1,1", "-S", "40%",
                     "-T", WORK, "-o", SORTED, PROJECTED],
                    check=True, env=dict(os.environ, LC_ALL="C"))
+    mark_done(SORTED)
 
 
 def stage_group(force):
@@ -296,6 +331,7 @@ def stage_group(force):
             except ValueError:
                 continue
         flush(cur, rows, fout)
+    mark_done(GROUPED)
     log(f"  {n:,} distinct works")
 
 

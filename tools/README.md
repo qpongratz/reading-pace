@@ -37,6 +37,12 @@ python3 tools/build_catalog.py
 Stages run in order and skip anything already done, so an interrupted run picks
 up where it stopped. `--force` redoes everything.
 
+A stage counts as done only when it has written a `.done` marker recording its
+output size. Checking for the output file alone is not enough: an interrupted
+stage leaves a perfectly plausible partial behind — non-empty, valid, missing
+most of the corpus — and resuming from it builds a catalog from a fraction of
+the dump while reporting success.
+
 | stage | what it does |
 |---|---|
 | `ratings` | work → rating count and latest rating year |
