@@ -92,6 +92,17 @@ e-reader. It's a separate project on purpose — a companion, never a requiremen
 
 ---
 
+## Tests
+
+```
+python3 tests/test_plan.py
+```
+
+No test dependencies either. Covers the rate-resolution chain, length handling,
+date arithmetic, percent-read, and throughput windows.
+
+---
+
 ## Layout
 
 ```
@@ -101,5 +112,7 @@ src/
   validate_palette.py  colour checks — CVD separation, contrast, lightness
 web/
   index.html           the planner
+tests/
+  test_plan.py         projection engine
 data/                  gitignored — your queue, catalog, rates
 ```

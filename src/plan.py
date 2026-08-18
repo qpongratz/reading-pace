@@ -94,16 +94,20 @@ class Rates:
             return self._pack(a, "author", first_author(author))
         if s:
             return self._pack(s, "series", series)
+        # global_wpm is authoritative when the calibration names one — the
+        # observations still describe the spread, but must not silently
+        # override the figure the file states.
         return self._pack(self.all or [self.global_wpm], "global",
                           "your overall pace" if self.calibrated
-                          else "typical reading pace")
+                          else "typical reading pace",
+                          median=self.global_wpm)
 
     @staticmethod
-    def _pack(vals, basis, label):
-        med = statistics.median(vals)
+    def _pack(vals, basis, label, median=None):
+        med = statistics.median(vals) if median is None else float(median)
         lo, hi = (min(vals), max(vals)) if len(vals) > 1 else (med, med)
         return {"wpm": med, "basis": basis, "label": label,
-                "n": len(vals), "low": lo, "high": hi,
+                "n": len(vals), "low": min(lo, med), "high": max(hi, med),
                 "confidence": {"series": "high", "author": "medium",
                                "global": "low"}[basis]}
 
