@@ -41,6 +41,29 @@ advanced one.
 per-weekday schedules, and explicit parallel weights are all advanced. The
 default interface should be addable books, one pace control, and a calendar.
 
+**Statistics are opt-in, not ambient.** The build has drifted toward showing its
+working by default, which reads as a dashboard rather than a planner. Someone
+opening this wants to know *when they'll finish*, not their words-per-minute by
+authorial basis. Everything numeric beyond the day count and the dates should
+sit behind a single "details" switch, off by default and remembered.
+
+Currently over-exposed, in rough order of how much it clutters:
+
+| shown by default | should be |
+|---|---|
+| confidence chip on every row (`198 wpm · series`) | behind details |
+| `59 books measured · 44 authors · 1,450 in library` header | behind details |
+| pace presets labelled `30d · 1.16`, `90d · 1.10` | plain wording, numbers behind details |
+| per-series/author totals under the charts | behind details |
+| stats line — books, days, words, hours | days and finish date only |
+| word counts in each row's subtitle | behind details |
+| pace slider expressed in hours/day | a plainer phrasing; the number behind details |
+| the working panel and the density dial | already correct — behind a tap |
+
+The two things already behind a tap are the model for the rest. Nothing should
+be deleted — the numbers are the reason to trust the estimate, and someone who
+wants them should find them one switch away.
+
 ## Next
 
 ### 1. Calibrate from one remembered book
