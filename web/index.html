@@ -19,6 +19,15 @@
      applies — hence the swatch beside every title in the queue. */
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
   --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+  /* Muted siblings for alternating volumes within one series. Same hue at 35%
+     chroma, so they read as the same family while staying clearly two shades:
+     consecutive dE 11.9, against 4.5 for the darkening this replaces. A shifted
+     *hue* was tried first and cannot work — eight hues already fill the circle,
+     so a 32 degree rotation lands dE 2.3 from a different series' colour.
+     Muting moves toward grey, away from every other hue, so cross-series
+     distance is untouched. */
+  --s1m:#7a93b4; --s2m:#d1a291; --s3m:#92b8a4; --s4m:#dac09c;
+  --s5m:#d8b0bd; --s6m:#6d8d6a; --s7m:#626388; --s8m:#c68f8a;
   --s-other:#7A8B93;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -29,6 +38,8 @@
      Worst adjacent CVD dE 8.4, normal-vision 19.3, all >= 3:1. */
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
   --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --s1m:#88a1c2; --s2m:#c19383; --s3m:#86a897; --s4m:#c2aa8c;
+  --s5m:#c0909d; --s6m:#6d8d6a; --s7m:#abaacd; --s8m:#cfa09e;
   --s-other:#6E8089;
 }}
 :root[data-theme="dark"]{
@@ -37,6 +48,8 @@
   --hi:#6BBF95; --med:#D8A445; --lo:#D98878;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
   --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --s1m:#88a1c2; --s2m:#c19383; --s3m:#86a897; --s4m:#c2aa8c;
+  --s5m:#c0909d; --s6m:#6d8d6a; --s7m:#abaacd; --s8m:#cfa09e;
   --s-other:#6E8089;
 }
 *{box-sizing:border-box}
@@ -495,10 +508,13 @@ function paint(slot, nth) {
   if (slot >= HUES * TIERS) {
     return {fill: "var(--s-other)", wash: "color-mix(in srgb, var(--s-other) 26%, transparent)"};
   }
-  const hue = `var(--s${(slot % HUES) + 1})`;
-  const base = nth % 2 ? `color-mix(in srgb, ${hue} 80%, var(--ink))` : hue;
+  const n = (slot % HUES) + 1;
+  // Alternate volumes take a muted sibling of the same hue rather than a darker
+  // shade of it — same family, but clearly two colours instead of two tones.
+  const hue = `var(--s${n})`;
+  const base = nth % 2 ? `var(--s${n}m)` : hue;
   const tier = Math.floor(slot / HUES);
-  const wash = `color-mix(in srgb, ${hue} 26%, transparent)`;
+  const wash = `color-mix(in srgb, ${base} 30%, transparent)`;
   if (tier === 0) return {fill: base, wash};
   const angle = tier === 1 ? 45 : 135;
   const stripes = (a, w) =>
