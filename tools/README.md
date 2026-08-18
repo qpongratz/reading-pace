@@ -94,8 +94,12 @@ catalog would be worse than a stale one.
 
 ## Making it faster
 
-The projection stage parses every record and then discards 86% of them, which is
-the wrong order. Roughly in order of payoff:
+Measured: **110M rows in 12 minutes**, about 154k rows/sec, for a job that runs
+twice a year. So none of this is worth a dependency or a rewrite — it is here
+because the ordering is genuinely wrong, not because the speed is a problem.
+
+The projection stage parses every record and then discards 86% of them.
+Roughly in order of payoff:
 
 - **Pre-filter on the raw line before `json.loads`.** A record with no
   `"number_of_pages"` substring, or without `/languages/eng`, can never survive.
@@ -110,5 +114,6 @@ the wrong order. Roughly in order of payoff:
   serial, but parsing could fan out to a process pool. Probably more complexity
   than it earns.
 
-The first two should take a full build from roughly 45 minutes to under 15,
-with no dependencies and no structural change.
+The first two need no dependencies and no structural change, and would probably
+land the projection stage under five minutes. Worth doing only if someone is
+already in this file.
