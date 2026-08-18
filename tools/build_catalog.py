@@ -146,8 +146,30 @@ def stage_ratings(inp, force):
 
 # ── project ──────────────────────────────────────────────────────────────────
 
+def ref_key(x):
+    """Pull an Open Library key out of a reference.
+
+    The dump is not uniform: a reference is usually {"key": "/authors/OL1A"} but
+    is sometimes the bare string. Ninety million records in, both shapes appear,
+    so never assume one.
+    """
+    if isinstance(x, dict):
+        return str(x.get("key") or "")
+    if isinstance(x, str):
+        return x
+    return ""
+
+
+def first_ref(seq, prefix):
+    for x in seq or []:
+        k = ref_key(x)
+        if k.startswith(prefix):
+            return k[len(prefix):]
+    return ""
+
+
 def is_english(rec):
-    return any((l.get("key") or "").endswith(("/eng", "/en"))
+    return any(ref_key(l).endswith(("/eng", "/en"))
                for l in (rec.get("languages") or []))
 
 
@@ -164,18 +186,20 @@ def project_edition(rec):
     fmt = str(rec.get("physical_format") or "").lower()
     if any(s in fmt for s in SKIP_FORMATS):
         return None, "non-book format"
-    wkey = (works[0].get("key") or "")[7:]
+    wkey = first_ref(works, "/works/")
     title = " ".join(str(rec.get("title") or "").split())[:160]
     if not wkey or not title:
         return None, "no title"
 
-    auth = rec.get("authors") or []
-    akey = (auth[0].get("key") or "")[9:] if auth else ""
+    akey = first_ref(rec.get("authors"), "/authors/")
     isbn = ""
     for field in ("isbn_13", "isbn_10"):
         v = rec.get(field) or []
-        if v:
+        if isinstance(v, (list, tuple)) and v:
             isbn = str(v[0]).replace("-", "")[:13]
+            break
+        if isinstance(v, str) and v:
+            isbn = v.replace("-", "")[:13]
             break
     year = ""
     for tok in str(rec.get("publish_date") or "").replace(",", " ").split():
@@ -214,7 +238,8 @@ def stage_project(inp, force):
             # rather than making a second pass over 17 GB later.
             if combined and kind == "/type/author":
                 try:
-                    name = json.loads(p[4]).get("name") or ""
+                    a = json.loads(p[4])
+                    name = (a.get("name") or "") if isinstance(a, dict) else ""
                 except Exception:
                     continue
                 if name:
@@ -226,9 +251,15 @@ def stage_project(inp, force):
 
             try:
                 rec = json.loads(p[4])
-            except Exception:
+                if not isinstance(rec, dict):
+                    continue
+                row, why = project_edition(rec)
+            except Exception as e:
+                # A single malformed record out of a hundred million should
+                # never cost the whole pass. Count them; if the count is large
+                # something structural is wrong and the summary will show it.
+                reasons[f"malformed ({type(e).__name__})"] += 1
                 continue
-            row, why = project_edition(rec)
             if row is None:
                 reasons[why] += 1
                 continue
