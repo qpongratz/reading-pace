@@ -34,31 +34,65 @@ UA = {"User-Agent": "reading-pace/0.1 (personal reading planner)"}
 _cache = {"library": None, "readings": None, "rates": None, "mtime": 0}
 
 
+# Two separate files, because they answer different questions and one is
+# rebuilt from scratch.
+#   catalog.json  the broad index, built by tools/build_catalog.py from the
+#                 Open Library dumps. Replaced wholesale on every refresh.
+#   local.json    whatever a tracker knows about *you* — reading progress,
+#                 series names, which books you own. Never overwritten by a
+#                 catalog rebuild.
 CATALOG_FILE = os.path.join(DATA, "catalog.json")
+LOCAL_FILE = os.path.join(DATA, "local.json")
+
+
+def _load_books(path):
+    if not os.path.exists(path):
+        return []
+    try:
+        with open(path) as f:
+            raw = json.load(f)
+        books = (raw.get("books") if isinstance(raw, dict) else raw) or []
+        return [b for b in books if (b.get("title") or "").strip()]
+    except Exception as e:
+        print(f"  {os.path.basename(path)} unreadable: {e}", file=sys.stderr)
+        return []
 
 
 def library():
-    """Local books available to search.
+    """Searchable books: the broad catalog, overlaid with what you own.
 
-    Optional. Drop a catalog.json here — exported from a tracker, or eventually
-    a bundled index of popular titles — and search answers instantly and
-    offline. Without one, search falls through to OpenLibrary alone.
-
-    Shape: [{"title", "author", "series", "series_num", "isbn",
-             "pages", "percent_read"}]
+    Both files are optional. Without either, search falls through to
+    OpenLibrary alone. Where a book appears in both, the local record wins —
+    it is the one that knows you are 23% into it.
     """
     if _cache["library"] is not None:
         return _cache["library"]
-    out = []
-    if os.path.exists(CATALOG_FILE):
-        try:
-            with open(CATALOG_FILE) as f:
-                raw = json.load(f)
-            for b in (raw.get("books") if isinstance(raw, dict) else raw) or []:
-                if (b.get("title") or "").strip():
-                    out.append(dict(b, source="library"))
-        except Exception as e:
-            print(f"  catalog.json unreadable: {e}", file=sys.stderr)
+
+    out, index = [], {}
+    for b in _load_books(CATALOG_FILE):
+        rec = dict(b, source="library")
+        index[(b.get("title") or "").strip().lower()] = rec
+        out.append(rec)
+
+    overlaid = added = 0
+    for b in _load_books(LOCAL_FILE):
+        key = (b.get("title") or "").strip().lower()
+        prev = index.get(key)
+        if prev:
+            # keep the catalog's page count if the local record lacks one
+            for k, v in b.items():
+                if v not in (None, "", 0) or k not in prev:
+                    prev[k] = v
+            prev["owned"] = True
+            overlaid += 1
+        else:
+            rec = dict(b, source="library", owned=True)
+            index[key] = rec
+            out.append(rec)
+            added += 1
+    if overlaid or added:
+        print(f"  local: {overlaid:,} overlaid, {added:,} added", file=sys.stderr)
+
     _cache["library"] = out
     return out
 

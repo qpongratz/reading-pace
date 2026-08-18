@@ -66,7 +66,9 @@ Drop either of these in `data/` and the planner picks them up on restart. Both
 are gitignored; neither is required.
 
 **`catalog.json`** — books you can search, answered instantly and offline.
-Without it, search falls through to OpenLibrary alone.
+Built by `tools/build_catalog.py` from the Open Library dumps, and replaced
+wholesale on every refresh. Without it, search falls through to OpenLibrary
+alone.
 
 ```json
 {"books": [{"title": "Demon in White", "author": "Christopher Ruocchio",
@@ -87,8 +89,14 @@ a generic default.
 `daily` seeds the pace presets from your recent history. Anything absent falls
 back to a default, so a partial file is fine.
 
-[**kobo-reading-stats**](../kobo-reading-stats) generates both from a Kobo
-e-reader. It's a separate project on purpose — a companion, never a requirement.
+**`local.json`** — optional, and the same shape as `catalog.json`. Whatever a
+tracker knows about *you*: which books you own and how far into each you are.
+Kept separate so a catalog rebuild can't overwrite it; where a book is in both,
+the local record wins.
+
+[**kobo-reading-stats**](../kobo-reading-stats) generates `rates.json` and
+`local.json` from a Kobo e-reader. It's a separate project on purpose — a
+companion, never a requirement.
 
 ---
 
