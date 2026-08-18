@@ -95,11 +95,14 @@ e-reader. It's a separate project on purpose — a companion, never a requiremen
 ## Tests
 
 ```
-python3 tests/test_plan.py
+python3 tests/test_plan.py       # projection engine
+node tests/test_ui_logic.js      # colour assignment and the derivation panel
 ```
 
-No test dependencies either. Covers the rate-resolution chain, length handling,
-date arithmetic, percent-read, and throughput windows.
+No test dependencies either. Between them they cover the rate-resolution chain,
+length handling, date arithmetic, percent-read, throughput windows, categorical
+colour assignment past the eight-hue limit, and the arithmetic shown when a row
+is expanded.
 
 ---
 
@@ -114,5 +117,6 @@ web/
   index.html           the planner
 tests/
   test_plan.py         projection engine
+  test_ui_logic.js     browser-side logic with no DOM dependency
 data/                  gitignored — your queue, catalog, rates
 ```

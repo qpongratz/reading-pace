@@ -6,13 +6,22 @@ on:
   pull_request:
 
 jobs:
-  test:
+  engine:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # No dependencies to install — the project is standard library only,
-      # and keeping it that way is the point.
+      # Nothing to install — the project is standard library only, and keeping
+      # it that way is the point.
       - run: python3 tests/test_plan.py
+
+  ui-logic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: node tests/test_ui_logic.js
