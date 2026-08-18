@@ -56,30 +56,27 @@ OpenLibrary publishes bulk dumps; distil popular fiction with page counts into a
 compressed index and ship it. Search becomes instant, offline, and quota-free.
 Refresh yearly.
 
-### 3. Mobile
-Currently broken in ways that matter more than any feature:
+### 3. Mobile — mostly done
+- ~~Reorder does not work on touch~~ — move up/down buttons, which also made it
+  keyboard- and screen-reader-reachable. Drag stays as a desktop shortcut.
+- ~~Everything explanatory is hover-only~~ — timeline blocks, lane labels and
+  calendar days open a detail bar on tap.
+- ~~The timeline drops its month ruler on narrow screens~~ — the ruler now spans
+  the single column instead of being hidden.
+- ~~Queue rows are a five-column grid~~ — they stack under 34rem.
 
-- **Reorder does not work at all.** HTML5 drag events don't fire on touch, and
-  reordering is the core interaction. Replace with move up/down buttons — fixes
-  touch, keyboard, and screen readers in one change; keep drag as a desktop
-  accelerator.
-- **Everything explanatory is hover-only.** Rate basis, full titles on narrow
-  blocks, calendar day tooltips, truncated lane labels. Touch has no hover.
-- **The timeline degrades badly** — the narrow-viewport rule drops the month
-  ruler, leaving bars with no time axis. Worse than scrolling. The calendar
-  should probably lead on small screens.
-- **Queue rows are a six-column grid** and need to stack.
+Still open: **not verified on a real phone.** The layout is built for it but
+nobody has held it yet. The calendar may still want to lead on small screens.
 
-### 4. Explain by showing the arithmetic
-Not help text — derivation. Every estimate expands to the sum that produced it:
+### 4. Explain by showing the arithmetic — partly done
+Tapping a queue row now expands the sum behind its estimate: pages → words,
+percentage already read, where the speed came from, and the division that
+produced the day count.
 
-> **Demon in White — 20 days**
-> 776 pages → 283,240 words *(365 words/page — change)*
-> ÷ 11,880 words/day = 198 wpm *(2 Sun Eater books)* × 1.16 h/day *(your pace)*
-
-Every italic is a link to the setting behind it. Two supporting rules: each
-setting previews its effect live as you change it, and every default says where
-it came from ("1.16 h/day — from *The Hobbit* taking you 5 days").
+Still open: the numbers in that panel are not yet **links to the settings behind
+them**, and settings do not yet preview their effect as you change them. Also
+missing: every default saying where it came from ("1.16 h/day — from *The
+Hobbit* taking you 5 days").
 
 ### 5. Uncertainty bands
 One hard date five months out is a lie told confidently. Ranges that widen down
@@ -94,8 +91,10 @@ split evenly. Advanced form: explicit weights.
 ### 7. Pinned dates
 Library due dates, book club, release dates. Show what collides.
 
-### 8. Series progress
-"2 of 7 through Sun Eater, 1.4M words remain."
+### 8. Series progress — partly done
+Per-series totals for what is queued now show beneath the charts: book count,
+words remaining, days. Still missing the "2 of 7" part, which needs to know how
+long a series actually is — that waits on the bundled catalog.
 
 ## Deferred
 
