@@ -177,6 +177,34 @@ StoryGraph's crowd "pace" tag was considered and dropped. It conflates the two
 it took them four months), there is no API, and scraping a small indie company
 is worse than scraping Open Library, not better.
 
+## Unresolved: telling volumes of a series apart
+
+Currently they are all one colour, which is worse than where this started. Three
+attempts, all rejected:
+
+- **Darkening 80% toward ink** — dE 4.5, reads as no difference.
+- **Muting to 35% chroma** — dE 11.9 and mathematically fine, but a desaturated
+  colour reads as a *faded* one, not a deliberate second shade.
+- **Rotating the hue** — cannot work at all. Eight hues fill the circle, so a
+  32-degree rotation lands dE 2.3 from a different series' colour.
+
+The promising one, not yet finished: a **deep sibling at full chroma**, moving
+lightness in whichever direction has headroom. dE 17.9-20.1, cross-series 8.0
+light / 11.9 dark, saturation intact so it reads as chosen rather than washed
+out. Computed values:
+
+    light  --s1d:#6ab8ff --s2d:#a92800 --s3d:#007444 --s4d:#ae6600
+           --s5d:#a7416b --s6d:#59c253 --s7d:#8078ea --s8d:#9f000c
+    dark   --s1d:#004da5 --s2d:#971500 --s3d:#00643b --s4d:#8c4c00
+           --s5d:#93064b --s6d:#59c253 --s7d:#5a4caa --s8d:#a42931
+
+The loose end is text colour: three light-mode siblings go lighter rather than
+darker, dropping white text to 2.1:1. Each sibling needs a paired foreground
+token rather than assuming white.
+
+Also wanted, and simpler: an **option to colour per book instead of per group**,
+so every book is its own colour regardless of series.
+
 ## Open questions
 
 - Do the author multipliers transfer between readers well enough to ship as
