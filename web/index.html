@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>reading-pace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400;6..72,600&family=Public+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#EEF1F2; --surface:#FAFBFB; --surface-2:#E4E9EB; --ink:#16252C;
+  --muted:#5E727B; --rule:#CFD8DC; --brass:#8F6412; --range:#6E93A1;
+  --hi:#2E6B4F; --med:#8F6412; --lo:#8C4A3F;
+  /* Categorical slots, fixed order, never cycled. Assigned per series so the
+     hue means something; a standalone book takes the next slot. Validated with
+     src/validate_palette.py against this surface: worst adjacent CVD dE 9.1,
+     normal-vision 19.6. Three slots sit under 3:1 here, so the relief rule
+     applies — hence the swatch beside every title in the queue. */
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
+  --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
+  --s-other:#7A8B93;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0F171B; --surface:#17222A; --surface-2:#202D36; --ink:#E4EDF1;
+  --muted:#8CA3AD; --rule:#26343D; --brass:#D8A445; --range:#6E93A1;
+  --hi:#6BBF95; --med:#D8A445; --lo:#D98878;
+  /* Same eight hues re-stepped for the dark surface, not an inversion.
+     Worst adjacent CVD dE 8.4, normal-vision 19.3, all >= 3:1. */
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --s-other:#6E8089;
+}}
+:root[data-theme="dark"]{
+  --paper:#0F171B; --surface:#17222A; --surface-2:#202D36; --ink:#E4EDF1;
+  --muted:#8CA3AD; --rule:#26343D; --brass:#D8A445; --range:#6E93A1;
+  --hi:#6BBF95; --med:#D8A445; --lo:#D98878;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --s-other:#6E8089;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+  font-family:"Public Sans",system-ui,sans-serif;font-size:15px;line-height:1.55}
+.wrap{max-width:66rem;margin:0 auto;padding:2rem 1.25rem 5rem;
+  display:flex;flex-direction:column;gap:1.75rem}
+h1{font-family:Newsreader,Georgia,serif;font-weight:300;font-size:2.3rem;
+  margin:0;letter-spacing:-.015em}
+.sub{color:var(--muted);font-size:.9rem;margin:.3rem 0 0}
+.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.card{background:var(--surface);border:1px solid var(--rule);border-radius:3px}
+.pad{padding:1rem 1.1rem}
+label.lab{font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);display:block;margin-bottom:.45rem}
+
+/* search */
+.searchbox{position:relative}
+input[type=text]{width:100%;padding:.7rem .85rem;font:inherit;color:var(--ink);
+  background:var(--surface);border:1px solid var(--rule);border-radius:3px}
+input[type=text]:focus{outline:2px solid var(--brass);outline-offset:1px}
+.results{position:absolute;z-index:20;left:0;right:0;top:calc(100% + 4px);
+  background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+  max-height:22rem;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.results:empty{display:none}
+.res{padding:.55rem .8rem;cursor:pointer;border-bottom:1px solid var(--rule);
+  display:flex;justify-content:space-between;gap:1rem;align-items:baseline}
+.res:last-child{border-bottom:none}
+.res:hover,.res:focus{background:var(--surface-2);outline:none}
+.res:focus{box-shadow:inset 3px 0 0 var(--brass)}
+.reshead{font-family:"IBM Plex Mono",monospace;font-size:.6rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted);padding:.5rem .8rem .3rem;
+  background:var(--surface-2);border-bottom:1px solid var(--rule);
+  position:sticky;top:0}
+.res .t{font-weight:500}
+.res .m{color:var(--muted);font-size:.8rem;white-space:nowrap}
+
+/* pace */
+.pace{display:flex;gap:1.25rem;align-items:center;flex-wrap:wrap}
+input[type=range]{flex:1;min-width:14rem;accent-color:var(--brass)}
+.presets{display:flex;gap:.4rem}
+button{font:inherit;cursor:pointer;background:var(--surface);color:var(--ink);
+  border:1px solid var(--rule);border-radius:3px;padding:.35rem .7rem;font-size:.82rem}
+button:hover{border-color:var(--brass)}
+button.on{background:var(--brass);border-color:var(--brass);color:var(--paper)}
+button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
+
+/* queue */
+.qhead{display:flex;align-items:center;gap:.6rem;padding:.6rem .8rem .6rem .6rem;
+  border-bottom:1px solid var(--rule)}
+.qhead:last-child{border-bottom:none}
+.qtoggle{border:none;background:none;color:var(--muted);font-size:.9rem;
+  line-height:1;padding:.2rem .3rem;transition:transform .15s ease}
+.qtoggle[aria-expanded="false"]{transform:rotate(-90deg)}
+.qtitle{font-family:"IBM Plex Mono",monospace;font-size:.64rem;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--muted)}
+.qsum{font-size:.82rem;color:var(--muted)}
+.qsum b{color:var(--ink);font-family:"IBM Plex Mono",monospace;font-weight:500;
+  font-variant-numeric:tabular-nums}
+.queue[hidden]{display:none}
+.queue{display:flex;flex-direction:column}
+.item{display:grid;grid-template-columns:1.4rem .8rem 1fr auto auto 1.6rem;gap:.8rem;
+  align-items:center;padding:.7rem 1.1rem;border-bottom:1px solid var(--rule);
+  background:var(--surface)}
+.item:last-child{border-bottom:none}
+.item.drag{opacity:.4}
+.item.over{border-top:2px solid var(--brass)}
+.grip{cursor:grab;color:var(--muted);user-select:none;text-align:center}
+.bt{font-weight:500}
+.bm{color:var(--muted);font-size:.8rem}
+.chip{font-family:"IBM Plex Mono",monospace;font-size:.62rem;letter-spacing:.08em;
+  text-transform:uppercase;padding:.15rem .4rem;border-radius:2px;border:1px solid}
+.chip.high{color:var(--hi);border-color:var(--hi)}
+.chip.medium{color:var(--med);border-color:var(--med)}
+.chip.low{color:var(--lo);border-color:var(--lo)}
+.days{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums;
+  text-align:right;white-space:nowrap}
+.days b{font-size:1.05rem;font-weight:500}
+.days span{display:block;color:var(--muted);font-size:.74rem}
+.x{background:none;border:none;color:var(--muted);font-size:1.1rem;padding:0;line-height:1}
+.x:hover{color:var(--lo)}
+.empty{padding:2.5rem 1.1rem;text-align:center;color:var(--muted)}
+.needlen{display:flex;gap:.4rem;align-items:center}
+.needlen input{width:5.5rem;padding:.25rem .4rem;font:inherit;font-size:.8rem;
+  background:var(--surface-2);border:1px solid var(--rule);border-radius:2px;color:var(--ink)}
+
+/* timeline — a lane per series, so short books keep their labels */
+.gantt{display:grid;grid-template-columns:minmax(6rem,11rem) 1fr;
+  column-gap:.7rem;row-gap:.25rem;align-items:center;margin-top:.6rem;min-width:34rem}
+/* The swatch must never be the thing that gets clipped — it carries identity
+   for the hues that fall under 3:1. So it is fixed-size and unshrinkable, and
+   only the name truncates. min-width:0 is what lets a flex child shrink below
+   its content and actually produce an ellipsis. */
+.glabel{font-size:.76rem;color:var(--muted);display:flex;align-items:center;
+  justify-content:flex-end;gap:.42rem;min-width:0}
+.glabel .sw{width:.7rem;height:.7rem;flex:0 0 auto}
+.glabel .name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+@media (max-width:46rem){
+  /* Narrow: the label column starves the lanes, so stack instead. */
+  .gantt{grid-template-columns:1fr;min-width:0;row-gap:0}
+  .glabel{justify-content:flex-start;padding:.45rem 0 .15rem}
+  .gmonths{display:none}
+}
+.glane{position:relative;height:1.7rem;background:var(--surface-2);border-radius:3px}
+.gmonths{display:grid;border-bottom:1px solid var(--rule);align-self:end}
+.track{position:relative;height:2.6rem;background:var(--surface-2);border-radius:3px;
+  overflow:hidden;margin-top:.5rem}
+/* 2px surface gap between fills, per mark specs — keeps same-series volumes
+   readable as separate blocks without needing a second hue. */
+.blk{position:absolute;top:0;bottom:0;border-right:2px solid var(--surface);
+  display:flex;align-items:center;padding:0 .45rem;font-size:.72rem;
+  white-space:nowrap;overflow:hidden;color:#fff;
+  text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.blk:last-child{border-right:none}
+.sw{width:.8rem;height:.8rem;border-radius:2px;flex:none;display:inline-block}
+.months{display:grid;border-bottom:1px solid var(--rule)}
+.mo{font-family:"IBM Plex Mono",monospace;font-size:.62rem;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--muted);padding:0 0 .35rem .35rem;
+  border-left:1px solid var(--rule);white-space:nowrap;overflow:hidden}
+/* month-grid view */
+.viewtabs{display:flex;gap:.4rem;margin-left:auto}
+.headrow{display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap}
+.cal{display:grid;grid-template-columns:repeat(auto-fill,minmax(14.5rem,1fr));
+  gap:1.4rem 1.6rem;margin-top:1rem}
+/* An explicit display beats the hidden attribute's UA rule, so say it again. */
+.cal[hidden],.scroll[hidden]{display:none}
+.viewsplit{border-top:1px solid var(--rule);margin-top:1.4rem;padding-top:.2rem}
+.mon h4{font-family:Newsreader,Georgia,serif;font-weight:400;font-size:1.05rem;
+  margin:0 0 .5rem;padding-bottom:.3rem;border-bottom:1px solid var(--rule)}
+.mon h4 span{color:var(--muted);font-size:.8rem;font-family:"IBM Plex Mono",monospace}
+.dow{display:grid;grid-template-columns:repeat(7,1fr)}
+/* No column gap: the smear has to run edge to edge to read as continuous. */
+.grid{display:grid;grid-template-columns:repeat(7,1fr);row-gap:.3rem}
+.dow div{font-family:"IBM Plex Mono",monospace;font-size:.58rem;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);text-align:center;padding-bottom:.3rem}
+.day{position:relative;aspect-ratio:1/.9;display:flex;align-items:center;
+  justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:.68rem;
+  color:var(--muted);font-variant-numeric:tabular-nums}
+.day.blank{visibility:hidden}
+/* the run between endpoints — same hue, dropped to a wash */
+.smear{position:absolute;top:50%;transform:translateY(-50%);height:1.55rem;z-index:0}
+.smear.capL{border-top-left-radius:.8rem;border-bottom-left-radius:.8rem}
+.smear.capR{border-top-right-radius:.8rem;border-bottom-right-radius:.8rem}
+/* solid endpoint */
+.dot{position:relative;z-index:1;width:1.55rem;height:1.55rem;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;color:#fff;font-weight:500;
+  text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.day.mid{color:var(--ink)}
+.day.today .num,.day.today .dot{box-shadow:0 0 0 2px var(--brass)}
+.day.today .num{border-radius:50%;width:1.55rem;height:1.55rem;
+  display:flex;align-items:center;justify-content:center}
+.num{position:relative;z-index:1}
+.finish{font-family:Newsreader,Georgia,serif;font-size:1.35rem;font-weight:300}
+.finish b{color:var(--brass);font-weight:400}
+.stats{display:flex;gap:1.5rem;flex-wrap:wrap;color:var(--muted);font-size:.84rem}
+.stats b{color:var(--ink);font-family:"IBM Plex Mono",monospace;font-weight:500}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>reading-pace</h1>
+    <p class="sub" id="sub">loading…</p>
+  </header>
+
+  <div class="card pad">
+    <label class="lab" for="q">Add a book — your library, or anything on OpenLibrary</label>
+    <div class="searchbox">
+      <input type="text" id="q" autocomplete="off" placeholder="title, author, or series…">
+      <div class="results" id="results"></div>
+    </div>
+  </div>
+
+  <div class="card pad">
+    <label class="lab" for="pace">Pace — hours per day</label>
+    <div class="pace">
+      <input type="range" id="pace" min="0.1" max="4" step="0.05" value="1.16">
+      <span class="mono" id="paceval">1.16 h/day</span>
+      <div class="presets" id="presets"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="qhead">
+      <button class="qtoggle" id="qtoggle" aria-expanded="true"
+              aria-controls="queue" title="Collapse the queue">▾</button>
+      <span class="qtitle">Queue</span>
+      <span class="qsum" id="qsum"></span>
+    </div>
+    <div class="queue" id="queue"></div>
+  </div>
+
+  <div class="card pad">
+    <div class="headrow">
+      <div class="finish" id="finish">Add a book to see a calendar.</div>
+      <div class="viewtabs">
+        <button id="tab-timeline" class="on">Timeline</button>
+        <button id="tab-calendar">Calendar</button>
+        <button id="tab-both">Both</button>
+      </div>
+    </div>
+    <div class="scroll"><div id="chart"></div></div>
+    <div id="cal" class="cal" hidden></div>
+    <div class="stats" id="stats"></div>
+  </div>
+
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+let STATE = null, QUEUE = [], PACE = 1.16, PLAN = null;
+
+async function api(path, body) {
+  const r = await fetch(path, body ? {
+    method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)
+  } : undefined);
+  return r.json();
+}
+
+async function boot() {
+  STATE = await api("/api/state");
+  const tp = STATE.throughput || {};
+  QUEUE = (STATE.queue && STATE.queue.books) || [];
+  if (STATE.queue && STATE.queue.hours_per_day) PACE = STATE.queue.hours_per_day;
+  else if (tp["30"]) PACE = tp["30"].hours_per_day;
+
+  $("#sub").textContent =
+    `${STATE.n_measured} books measured · ${Object.keys(STATE.by_author).length} authors · ` +
+    `${STATE.library_size.toLocaleString()} in your library`;
+
+  const p = $("#presets");
+  p.innerHTML = "";
+  for (const w of ["30", "90", "180"]) {
+    if (!tp[w]) continue;
+    const b = document.createElement("button");
+    b.textContent = `${w}d · ${tp[w].hours_per_day.toFixed(2)}`;
+    b.title = `${tp[w].reading_days} reading days out of ${tp[w].span_days}`;
+    b.onclick = () => { PACE = tp[w].hours_per_day; syncPace(); refresh(); };
+    p.appendChild(b);
+  }
+  syncPace();
+  let saved = "timeline", qopen = "1";
+  try {
+    saved = localStorage.getItem("rp-view") || "timeline";
+    qopen = localStorage.getItem("rp-queue-open") ?? "1";
+  } catch (e) {}
+  await refresh();
+  setView(saved);
+  setQueueOpen(qopen !== "0");
+}
+
+function syncPace() {
+  $("#pace").value = PACE;
+  $("#paceval").textContent = `${(+PACE).toFixed(2)} h/day`;
+}
+
+$("#pace").addEventListener("input", e => {
+  PACE = parseFloat(e.target.value);
+  $("#paceval").textContent = `${PACE.toFixed(2)} h/day`;
+  refresh();
+});
+
+/* ---------- search ----------
+   Two tiers. The local library answers instantly and is rendered on its own;
+   OpenLibrary is fetched separately and folded in when it lands, so a slow or
+   stalled lookup never blocks results you already have.
+   Every response carries the sequence number of the keystroke that asked for
+   it — anything stale is dropped rather than overwriting newer results. */
+let searchTimer = null, seq = 0, shownLocal = [], activeQuery = "";
+
+function addBook(r) {
+  QUEUE.push({title: r.title, author: r.author, series: r.series,
+              series_num: r.series_num, isbn: r.isbn, pages: r.pages || null,
+              // Kobo knows how far in you already are; project from there.
+              percent_read: (r.percent_read > 0 && r.percent_read < 100)
+                ? r.percent_read : 0});
+  $("#q").value = "";
+  $("#results").innerHTML = "";
+  activeQuery = "";
+  refresh();
+}
+
+function resultRow(r) {
+  const el = document.createElement("div");
+  el.className = "res"; el.tabIndex = 0; el.setAttribute("role", "option");
+  const meta = [
+    r.author,
+    r.series && `${r.series}${r.series_num ? " #" + r.series_num : ""}`,
+    r.pages && `${r.pages}pp`,
+    (r.percent_read > 0 && r.percent_read < 100) && `${r.percent_read}% in`,
+  ].filter(Boolean).join(" · ");
+  el.innerHTML = `<span class="t"></span><span class="m"></span>`;
+  el.querySelector(".t").textContent = r.title || "(untitled)";
+  el.querySelector(".m").textContent = meta;
+  el.onclick = () => addBook(r);
+  el.onkeydown = ev => {
+    if (ev.key === "Enter") { ev.preventDefault(); addBook(r); }
+  };
+  return el;
+}
+
+function renderResults(local, web, webState) {
+  const box = $("#results");
+  box.innerHTML = "";
+  if (local.length) {
+    box.appendChild(sectionHead(`your library · ${local.length}`));
+    local.forEach(r => box.appendChild(resultRow(r)));
+  }
+  if (webState === "loading") {
+    box.appendChild(sectionHead("openlibrary · searching…"));
+  } else if (web && web.length) {
+    const known = new Set(local.map(r => (r.title || "").toLowerCase()));
+    const fresh = web.filter(r => !known.has((r.title || "").toLowerCase()));
+    if (fresh.length) {
+      box.appendChild(sectionHead(`openlibrary · ${fresh.length}`));
+      fresh.forEach(r => box.appendChild(resultRow(r)));
+    }
+  } else if (webState === "empty" && !local.length) {
+    box.appendChild(sectionHead("nothing found"));
+  } else if (webState === "error" && !local.length) {
+    box.appendChild(sectionHead("openlibrary unreachable — add by page count"));
+  }
+}
+
+function sectionHead(text) {
+  const h = document.createElement("div");
+  h.className = "reshead";
+  h.textContent = text;
+  return h;
+}
+
+$("#q").addEventListener("input", e => {
+  clearTimeout(searchTimer);
+  const q = e.target.value.trim();
+  activeQuery = q;
+  if (q.length < 2) { $("#results").innerHTML = ""; return; }
+
+  searchTimer = setTimeout(async () => {
+    const mine = ++seq;
+
+    const local = await api("/api/search?q=" + encodeURIComponent(q));
+    if (mine !== seq) return;                    // a newer keystroke won
+    shownLocal = local.results || [];
+    renderResults(shownLocal, null, "loading");
+
+    const web = await api("/api/search/web?q=" + encodeURIComponent(q));
+    if (mine !== seq) return;
+    const state = web.error ? "error" : ((web.results || []).length ? "ok" : "empty");
+    renderResults(shownLocal, web.results || [], state);
+  }, 180);
+});
+
+/* arrow keys move between the input and the result list */
+$("#q").addEventListener("keydown", e => {
+  const first = $("#results .res");
+  if (e.key === "ArrowDown" && first) { e.preventDefault(); first.focus(); }
+  if (e.key === "Escape") { $("#results").innerHTML = ""; }
+});
+$("#results").addEventListener("keydown", e => {
+  if (!e.target.classList.contains("res")) return;
+  const rows = [...document.querySelectorAll("#results .res")];
+  const i = rows.indexOf(e.target);
+  if (e.key === "ArrowDown") { e.preventDefault(); (rows[i + 1] || rows[0]).focus(); }
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (i === 0) $("#q").focus(); else rows[i - 1].focus();
+  }
+  if (e.key === "Escape") { $("#results").innerHTML = ""; $("#q").focus(); }
+});
+
+document.addEventListener("click", e => {
+  if (!e.target.closest(".searchbox")) $("#results").innerHTML = "";
+});
+
+/* ---------- colour ----------
+   Slots are assigned per SERIES, in order of first appearance, so a hue means
+   "this series" rather than "this row" — a queue reordered keeps its colours.
+   Successive volumes within one series step darker so neighbouring blocks stay
+   separable without spending a second slot. Past eight groups everything folds
+   into one neutral rather than inventing hues. */
+let COLORS = [];
+
+/* Eight validated hues, and a queue can easily hold more than eight series.
+   Generating a ninth hue is the wrong move — new hues stop being separable long
+   before you run out of names. Instead the hue cycles and a second channel
+   carries the difference: group 9 is hue 1 with 45° stripes, group 17 is hue 1
+   with 135°. Three tiers gives 24 groups that stay tellable apart, and the
+   stripes are white overlays so they read on any hue in either theme. */
+const HUES = 8, TIERS = 3;
+
+function paint(slot, nth) {
+  if (slot >= HUES * TIERS) {
+    return {fill: "var(--s-other)", wash: "color-mix(in srgb, var(--s-other) 26%, transparent)"};
+  }
+  const hue = `var(--s${(slot % HUES) + 1})`;
+  const base = nth % 2 ? `color-mix(in srgb, ${hue} 80%, var(--ink))` : hue;
+  const tier = Math.floor(slot / HUES);
+  const wash = `color-mix(in srgb, ${hue} 26%, transparent)`;
+  if (tier === 0) return {fill: base, wash};
+  const angle = tier === 1 ? 45 : 135;
+  const stripes = (a, w) =>
+    `repeating-linear-gradient(${angle}deg, rgba(255,255,255,${a}) 0 ${w}px,` +
+    ` rgba(255,255,255,0) ${w}px ${w * 2}px)`;
+  return {
+    fill: `${stripes(0.30, 4)}, ${base}`,
+    wash: `${stripes(0.22, 4)}, ${wash}`,
+  };
+}
+
+function assignColors(books) {
+  const slotOf = new Map(), countOf = new Map();
+  let next = 0;
+  return books.map(b => {
+    const key = (b.series || "").trim()
+      ? "s:" + b.series.trim().toLowerCase()
+      : "b:" + (b.title || "").trim().toLowerCase();
+    if (!slotOf.has(key)) slotOf.set(key, next++);
+    const slot = slotOf.get(key);
+    const nth = countOf.get(key) || 0;
+    countOf.set(key, nth + 1);
+    return paint(slot, nth);
+  });
+}
+const fillOf = i => (COLORS[i] && COLORS[i].fill) || "var(--s-other)";
+const washOf = i => (COLORS[i] && COLORS[i].wash) ||
+  "color-mix(in srgb, var(--s-other) 26%, transparent)";
+
+/* ---------- queue ---------- */
+let dragFrom = null;
+
+function renderQueue() {
+  const q = $("#queue");
+  q.innerHTML = "";
+  if (!QUEUE.length) {
+    q.innerHTML = `<div class="empty">Nothing queued yet. Search above to add a book.</div>`;
+    return;
+  }
+  (PLAN ? PLAN.books : QUEUE).forEach((b, i) => {
+    const el = document.createElement("div");
+    el.className = "item"; el.draggable = true;
+
+    const rate = b.rate || {};
+    const meta = [b.author, b.series,
+                  b.words && `${Math.round(b.words / 1000)}k words`,
+                  b.percent_done > 0 && `${b.percent_done}% read → ` +
+                    `${Math.round((b.remaining_words || 0) / 1000)}k left`]
+                 .filter(Boolean).join(" · ");
+
+    el.innerHTML = `
+      <span class="grip" aria-hidden="true">⠿</span>
+      <span class="sw"></span>
+      <span><span class="bt"></span><br><span class="bm"></span></span>
+      <span class="chipwrap"></span>
+      <span class="days"></span>
+      <button class="x" title="Remove">×</button>`;
+    el.querySelector(".bt").textContent = b.title || "(untitled)";
+    el.querySelector(".bm").textContent = meta;
+    // The swatch is the legend: it ties this row to its block on the calendar,
+    // and carries identity for the slots that fall under 3:1 on the surface.
+    el.querySelector(".sw").style.background = fillOf(i);
+    el.querySelector(".sw").title = b.series || b.title || "";
+
+    if (rate.wpm) {
+      const c = document.createElement("span");
+      c.className = "chip " + (rate.confidence || "low");
+      c.textContent = `${Math.round(rate.wpm)} wpm · ${rate.basis}`;
+      c.title = rate.basis === "global"
+        ? `No reading history for this author — using your overall median across ${rate.n} books.`
+        : `From ${rate.n} book${rate.n > 1 ? "s" : ""} you've read (${rate.label}).`;
+      el.querySelector(".chipwrap").appendChild(c);
+    }
+
+    const d = el.querySelector(".days");
+    if (b.days) {
+      d.innerHTML = `<b></b><span></span>`;
+      d.querySelector("b").textContent = b.days + "d";
+      d.querySelector("span").textContent = fmt(b.start) + " – " + fmt(b.end);
+    } else {
+      d.className = "needlen";
+      const inp = document.createElement("input");
+      inp.type = "number"; inp.placeholder = "pages"; inp.min = "1";
+      inp.onchange = () => {
+        QUEUE[i].pages = parseInt(inp.value) || null; refresh();
+      };
+      d.appendChild(inp);
+    }
+
+    el.querySelector(".x").onclick = () => { QUEUE.splice(i, 1); refresh(); };
+
+    el.addEventListener("dragstart", () => { dragFrom = i; el.classList.add("drag"); });
+    el.addEventListener("dragend", () => {
+      dragFrom = null; el.classList.remove("drag");
+      document.querySelectorAll(".item").forEach(x => x.classList.remove("over"));
+    });
+    el.addEventListener("dragover", ev => { ev.preventDefault(); el.classList.add("over"); });
+    el.addEventListener("dragleave", () => el.classList.remove("over"));
+    el.addEventListener("drop", ev => {
+      ev.preventDefault();
+      if (dragFrom === null || dragFrom === i) return;
+      const [m] = QUEUE.splice(dragFrom, 1);
+      QUEUE.splice(i, 0, m);
+      refresh();
+    });
+    q.appendChild(el);
+  });
+}
+
+const fmt = iso => iso ? new Date(iso + "T12:00:00")
+  .toLocaleDateString("en", {month: "short", day: "numeric"}) : "";
+
+/* ---------- timeline ---------- */
+function renderChart() {
+  const chart = $("#chart");
+  const all = (PLAN && PLAN.books) || [];
+  const done = all.map((b, i) => ({...b, _i: i})).filter(b => b.days);
+  if (!done.length) { chart.innerHTML = ""; $("#stats").innerHTML = ""; return; }
+
+  const t0 = new Date(done[0].start + "T12:00:00");
+  const t1 = new Date(done[done.length - 1].end + "T12:00:00");
+  const span = Math.max(1, (t1 - t0) / 86400000 + 1);
+
+  const months = [];
+  let cur = new Date(t0.getFullYear(), t0.getMonth(), 1);
+  while (cur <= t1) {
+    const next = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+    const from = Math.max(cur, t0), to = Math.min(next, t1);
+    if (to > from) months.push({
+      label: cur.toLocaleDateString("en", {month: "short"}),
+      year: cur.getFullYear(), frac: (to - from) / 86400000 / span});
+    cur = next;
+  }
+
+  // One lane per series (standalone books get their own), in queue order. Books
+  // never overlap in time, so a lane is only ever busy with one at a time — but
+  // splitting them out means a three-day book still has a full row to label
+  // itself in, instead of a two-pixel sliver on a shared track.
+  const laneOf = new Map(), laneName = [], laneSw = [];
+  for (const b of done) {
+    const key = (b.series || "").trim()
+      ? "s:" + b.series.trim().toLowerCase()
+      : "b:" + (b.title || "").trim().toLowerCase();
+    if (!laneOf.has(key)) {
+      laneOf.set(key, laneName.length);
+      laneName.push((b.series || "").trim() || b.title || "—");
+      laneSw.push(b._i);
+    }
+    b._lane = laneOf.get(key);
+  }
+
+  chart.innerHTML = `<div class="gantt"></div>`;
+  const g = chart.querySelector(".gantt");
+
+  // header row: blank label cell + month ruler
+  const spacer = document.createElement("div");
+  g.appendChild(spacer);
+  const ruler = document.createElement("div");
+  ruler.className = "gmonths";
+  ruler.style.gridTemplateColumns = months.map(m => m.frac + "fr").join(" ");
+  ruler.innerHTML = months.map(m =>
+    `<div class="mo">${m.label}${m.label === "Jan" ? " " + String(m.year).slice(2) : ""}</div>`
+  ).join("");
+  g.appendChild(ruler);
+
+  laneName.forEach((name, li) => {
+    const lab = document.createElement("div");
+    lab.className = "glabel";
+    lab.title = name;
+    const sw = document.createElement("span");
+    sw.className = "sw";
+    sw.style.background = fillOf(laneSw[li]);
+    const txt = document.createElement("span");
+    txt.className = "name";
+    txt.textContent = name;
+    lab.append(sw, txt);
+    g.appendChild(lab);
+
+    const lane = document.createElement("div");
+    lane.className = "glane";
+    done.filter(b => b._lane === li).forEach(b => {
+      const l = (new Date(b.start + "T12:00:00") - t0) / 86400000 / span * 100;
+      const w = b.days / span * 100;
+      const el = document.createElement("div");
+      el.className = "blk";
+      el.style.left = l + "%";
+      el.style.width = w + "%";
+      el.style.background = fillOf(b._i);
+      el.title = `${b.title} — ${b.days} days, ${fmt(b.start)} to ${fmt(b.end)}` +
+                 (b.rate ? ` · ${Math.round(b.rate.wpm)} wpm (${b.rate.basis})` : "");
+      // Inside the block if it fits, the volume number if it nearly fits,
+      // nothing at all if it doesn't — the lane label already names the series.
+      if (w > 14) el.textContent = b.title;
+      else if (w > 4) el.textContent = b.series_num ? "#" + b.series_num : "";
+      lane.appendChild(el);
+    });
+    g.appendChild(lane);
+  });
+
+  const totalWords = done.reduce((a, b) => a + (b.remaining_words || 0), 0);
+  $("#stats").innerHTML =
+    `<span><b>${done.length}</b> books</span>` +
+    `<span><b>${PLAN.total_days}</b> days</span>` +
+    `<span><b>${(totalWords / 1e6).toFixed(2)}M</b> words</span>` +
+    `<span><b>${(PACE * PLAN.total_days).toFixed(0)}</b> hours of reading</span>`;
+}
+
+/* ---------- month grid ----------
+   Same schedule, laid out the way a calendar is actually read. Only months the
+   plan touches are drawn, and a day is tinted with the colour of whatever book
+   it belongs to, so a run of one hue reads as "this book owns these weeks". */
+let VIEW = "timeline";
+const DOW = ["S", "M", "T", "W", "T", "F", "S"];
+const iso = d => d.toISOString().slice(0, 10);
+
+function renderCalendar() {
+  const box = $("#cal");
+  const all = (PLAN && PLAN.books) || [];
+  const done = all.map((b, i) => ({...b, _i: i})).filter(b => b.days);
+  if (!done.length) { box.innerHTML = ""; return; }
+
+  // one entry per day: which book, and whether it's that book's first day
+  const owner = new Map();
+  for (const b of done) {
+    const d = new Date(b.start + "T12:00:00");
+    const end = new Date(b.end + "T12:00:00");
+    let first = true;
+    while (d <= end) {
+      owner.set(iso(d), {i: b._i, title: b.title, first});
+      first = false;
+      d.setDate(d.getDate() + 1);
+    }
+  }
+
+  const t0 = new Date(done[0].start + "T12:00:00");
+  const t1 = new Date(done[done.length - 1].end + "T12:00:00");
+  const todayIso = iso(new Date());
+
+  box.innerHTML = "";
+  let cur = new Date(t0.getFullYear(), t0.getMonth(), 1);
+  while (cur <= t1) {
+    const y = cur.getFullYear(), m = cur.getMonth();
+    const first = new Date(y, m, 1), last = new Date(y, m + 1, 0);
+
+    let readingDays = 0;
+    for (let d = 1; d <= last.getDate(); d++)
+      if (owner.has(iso(new Date(y, m, d, 12)))) readingDays++;
+
+    const mon = document.createElement("div");
+    mon.className = "mon";
+    mon.innerHTML =
+      `<h4>${first.toLocaleDateString("en", {month: "long"})}
+        <span>${y}${readingDays ? " · " + readingDays + "d" : ""}</span></h4>
+       <div class="dow">${DOW.map(x => `<div>${x}</div>`).join("")}</div>
+       <div class="grid"></div>`;
+    const grid = mon.querySelector(".grid");
+
+    for (let i = 0; i < first.getDay(); i++) {
+      const b = document.createElement("div");
+      b.className = "day blank";
+      grid.appendChild(b);
+    }
+    for (let d = 1; d <= last.getDate(); d++) {
+      const day = new Date(y, m, d, 12);
+      const key = iso(day);
+      const o = owner.get(key);
+      const cell = document.createElement("div");
+      cell.className = "day" + (key === todayIso ? " today" : "");
+
+      if (!o) {
+        cell.innerHTML = `<span class="num">${d}</span>`;
+        grid.appendChild(cell);
+        continue;
+      }
+
+      const prev = owner.get(iso(new Date(y, m, d - 1, 12)));
+      const next = owner.get(iso(new Date(y, m, d + 1, 12)));
+      const contPrev = prev && prev.i === o.i;
+      const contNext = next && next.i === o.i;
+      const col = day.getDay();
+      const endpoint = !contPrev || !contNext;   // first or last day of the book
+
+      // The wash spans from this cell's centre (under the dot) or its edge,
+      // stopping at whichever comes first: the book ending, or the row ending.
+      if (contPrev || contNext) {
+        const sm = document.createElement("div");
+        sm.className = "smear";
+        sm.style.left = contPrev ? "0" : "50%";
+        sm.style.right = contNext ? "0" : "50%";
+        sm.style.background = washOf(o.i);
+        // Round ONLY where a week boundary cuts the run. Where the wash meets a
+        // dot it must stay square — the circle is the rounded end, and a second
+        // curve behind it reads as a bulge creeping out of the dot.
+        if (contPrev && col === 0) sm.classList.add("capL");
+        if (contNext && col === 6) sm.classList.add("capR");
+        cell.appendChild(sm);
+      }
+
+      const mark = document.createElement("span");
+      if (endpoint) {
+        mark.className = "dot";
+        mark.style.background = fillOf(o.i);
+      } else {
+        mark.className = "num";
+        cell.classList.add("mid");
+      }
+      mark.textContent = d;
+      cell.appendChild(mark);
+
+      const which = !contPrev && !contNext ? "all of it"
+        : !contPrev ? "starts" : "finishes";
+      cell.title = `${o.title} — ${which}`;
+      grid.appendChild(cell);
+    }
+    box.appendChild(mon);
+    cur = new Date(y, m + 1, 1);
+  }
+}
+
+/* ---------- queue collapse ----------
+   Collapsed, the header still says what is in there: count, span, finish date.
+   No colour strip — the timeline directly below already shows exactly that. */
+let QOPEN = true;
+
+function renderQueueHead() {
+  const n = QUEUE.length;
+  const days = (PLAN && PLAN.total_days) || 0;
+  const last = [...((PLAN && PLAN.books) || [])].reverse().find(b => b.end);
+  $("#qsum").innerHTML = n
+    ? `<b>${n}</b> book${n > 1 ? "s" : ""}` +
+      (days ? ` · <b>${days}</b> days` : "") +
+      (last ? ` · through <b>${fmt(last.end)}</b>` : "")
+    : "empty";
+}
+
+function setQueueOpen(open) {
+  QOPEN = open;
+  $("#queue").hidden = !open;
+  const t = $("#qtoggle");
+  t.setAttribute("aria-expanded", String(open));
+  t.title = open ? "Collapse the queue" : "Expand the queue";
+  try { localStorage.setItem("rp-queue-open", open ? "1" : "0"); } catch (e) {}
+  renderQueueHead();
+}
+$("#qtoggle").onclick = () => setQueueOpen(!QOPEN);
+
+/* Render every visible view. Rendering only the "active" one let the other go
+   stale behind it — a pace change redrew the timeline while the calendar below
+   kept showing the old dates until you toggled tabs. */
+function draw() {
+  if (VIEW !== "calendar") renderChart();
+  if (VIEW !== "timeline") renderCalendar();
+  renderQueueHead();
+}
+
+function setView(v) {
+  VIEW = v;
+  for (const t of ["timeline", "calendar", "both"])
+    $("#tab-" + t).classList.toggle("on", v === t);
+  $("#chart").parentElement.hidden = v === "calendar";
+  $("#cal").hidden = v === "timeline";
+  $("#cal").classList.toggle("viewsplit", v === "both");
+  try { localStorage.setItem("rp-view", v); } catch (e) {}
+  draw();
+}
+["timeline", "calendar", "both"].forEach(t =>
+  $("#tab-" + t).onclick = () => setView(t));
+
+/* ---------- refresh ---------- */
+async function refresh() {
+  COLORS = assignColors(QUEUE);
+  renderQueue();
+  if (!QUEUE.length) {
+    PLAN = null;
+    $("#finish").textContent = "Add a book to see a calendar.";
+    draw();
+    api("/api/queue", {books: QUEUE, hours_per_day: PACE});
+    return;
+  }
+  PLAN = await api("/api/plan", {books: QUEUE, hours_per_day: PACE});
+  renderQueue();
+  draw();
+  const last = [...(PLAN.books || [])].reverse().find(b => b.end);
+  $("#finish").innerHTML = last
+    ? `Finishes <b>${new Date(last.end + "T12:00:00").toLocaleDateString("en",
+        {month: "long", day: "numeric", year: "numeric"})}</b>`
+    : "Add a page count to project a date.";
+  api("/api/queue", {books: QUEUE, hours_per_day: PACE});
+}
+
+boot();
+</script>
+</body>
+</html>

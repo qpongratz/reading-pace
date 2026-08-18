@@ -1,0 +1,13 @@
+# Everything under data/ is personal: your queue, your reading history, your
+# library. The app works without any of it — these are local state, not source.
+data/
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# macOS
+.DS_Store
