@@ -577,7 +577,7 @@ function derivation(b) {
   rows.push([`${PACE.toFixed(2)} hours/day`,
              `= ${Math.round(r.wpm * 60 * PACE).toLocaleString()} words/day`]);
   if (mult !== 1) {
-    rows.push([`× ${mult.toFixed(2)} for this book`,
+    rows.push([`× ${mult.toFixed(2)} for prose density`,
                `= ${(b.words_per_day || 0).toLocaleString()} words/day`]);
   }
   rows.push([`${b.days} days`,
@@ -586,21 +586,27 @@ function derivation(b) {
   return rows;
 }
 
-/* Per-book rate correction. Two real effects push a book off its predicted
-   rate and neither is knowable in advance: prose density (Erikson runs ~181 wpm
-   against Carl's ~300) and how much the book grips you. Both scale the same
-   product, so one dial covers both. Lives inside the working panel, which is
-   already behind a tap — advanced by construction rather than by a settings
-   screen. */
-const MULT_PRESETS = [[0.6, "slog"], [0.8, "slower"], [1, "normal"],
-                      [1.3, "faster"], [1.7, "page-turner"]];
+/* Per-book density correction: how many words an hour of reading gets you
+   through. Erikson measures ~181 wpm against Dungeon Crawler Carl's ~300, and
+   that gap holds however long you sit with the book.
+
+   Deliberately NOT about how gripping a book is. You cannot plan to give one
+   book fewer hours a day — you set a daily budget and read whatever is current.
+   A book that grips you shows up as more hours that day, and the plan corrects
+   itself the next time you update your progress. Only density is a property you
+   can state in advance.
+
+   Lives inside the working panel, which is already behind a tap, so it is
+   advanced by construction rather than by a settings screen. */
+const MULT_PRESETS = [[0.7, "dense"], [0.85, "chewy"], [1, "normal"],
+                      [1.25, "quick"], [1.5, "breezy"]];
 
 function multiplierControl(b, i) {
   const cur = b.rate_multiplier || 1;
   const wrap = document.createElement("div");
   wrap.className = "multrow";
   const lab = document.createElement("span");
-  lab.textContent = "this book reads";
+  lab.textContent = "prose density";
   wrap.appendChild(lab);
 
   const set = v => {
@@ -612,7 +618,8 @@ function multiplierControl(b, i) {
   for (const [v, name] of MULT_PRESETS) {
     const btn = document.createElement("button");
     btn.textContent = name;
-    btn.title = `${v}× your usual rate for ${b.author || "this author"}`;
+    btn.title = `${v}× the words-per-minute you'd normally manage` +
+                (b.author ? ` for ${b.author}` : "");
     if (Math.abs(cur - v) < 0.01) btn.classList.add("on");
     btn.onclick = ev => { ev.stopPropagation(); set(v); };
     group.appendChild(btn);

@@ -157,11 +157,14 @@ def project(queue, hours_per_day, rates, start=None, start_fraction=None):
             done = start_fraction
         remaining = words * (1.0 - done)
 
-        # A per-book correction the reader sets by hand. Two real effects push a
-        # book off its predicted rate and neither is fully knowable in advance:
-        # prose density, which history measures per author but not per book, and
-        # how much the book grips you, which no data can supply. They both scale
-        # the same product, so one dial covers both.
+        # Per-book density correction: how many words an hour of reading covers.
+        # Measured rates already capture this per author; the dial is for authors
+        # with no history, or a book unusually heavy or light for its author.
+        #
+        # Not a "how gripping is it" control. You cannot plan to give one book
+        # fewer hours a day — you set a daily budget and read whatever is
+        # current. A gripping book shows up as more hours that day, and the plan
+        # corrects itself when progress is next updated.
         mult = clamp_multiplier(book.get("rate_multiplier"))
         per_day = rate["wpm"] * 60 * hours_per_day * mult
         days = max(1, round(remaining / per_day))

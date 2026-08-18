@@ -128,19 +128,26 @@ OpenLibrary returns empty even when asked for it and Wikidata only covers ~80%
 of a real TBR after name normalisation. This drops Wikidata from the data
 pipeline entirely and leaves the join a single-source problem.
 
-**Two per-book effects, not one.** Measured across 58 books, reading speed and
-how much of the day a book takes are **independent** (r = +0.11) and both real:
+**Density is a per-book input; grip is not.** Measured across 58 books, reading
+speed and how much of the day a book takes are independent (r = +0.11), and it
+is tempting to treat both as things you set per book. Only one is.
 
-- *Density* — words per minute the prose costs. Erikson measures 181 wpm against
-  Dungeon Crawler Carl's ~300, across 76 hours of reading. History measures this
-  per author; it is what the calibration file supplies.
-- *Grip* — how much of your day the book eats. Blindsight is dense (186 wpm) yet
-  read avidly (0.93 h/day); The Color of Magic is quick prose (233 wpm) picked at
-  over months (0.00 h/day). No data predicts this.
+*Density* — words per minute the prose costs — is real and statable in advance.
+Erikson measures 181 wpm against Dungeon Crawler Carl's ~300, and that gap holds
+however long you sit with the book. History measures it per author; the
+**per-book rate multiplier** covers authors with no history, or a book unusually
+heavy for its author.
 
-Both scale the same product, so a single **per-book rate multiplier** covers
-both, and it lives in the working panel — advanced by construction rather than
-by a settings screen.
+*Grip* is observable, not settable. You cannot plan to give one book fewer hours
+a day — you set a daily budget and read whatever is current. A book that grips
+you shows up as more hours that day, and the plan corrects itself the next time
+progress is updated: bump the percentage, drop the finished book, everything
+reflows. Modelling it in advance would be modelling something the user cannot
+know and does not control.
+
+This is also the general principle for the whole tool: **a plan is a projection
+you re-check, not a simulation.** Deviations resolve by re-syncing, not by
+adding terms.
 
 StoryGraph's crowd "pace" tag was considered and dropped. It conflates the two
 (a reader calling a book "slow" may mean thick prose, a crawling plot, or that
