@@ -66,8 +66,10 @@ console.log("series grouping");
                           { series: "Sun Eater" }, { series: "Other" }]);
   check("a series keeps one hue across its volumes",
         s.slice(0, 3).every(x => x.fill.includes("--s1")));
-  check("consecutive volumes alternate so neighbours stay separable",
-        s[1].fill !== s[0].fill && s[0].fill === s[2].fill);
+  // Colour answers "which series"; which volume is a separate variable, carried
+  // by the number, the gap between blocks and the endpoint dots.
+  check("volumes of one series are the same colour",
+        s[0].fill === s[1].fill && s[1].fill === s[2].fill);
   check("a second series takes the next slot", s[3].fill.includes("--s2"));
 }
 
@@ -92,8 +94,7 @@ console.log("grouping falls back to author when series is absent");
 console.log("standalone books");
 {
   const t = assignColors([{ title: "A" }, { title: "B" }, { title: "A" }]);
-  check("repeats of one title share its hue", t[2].fill.includes("--s1"));
-  check("but are stepped, like volumes of a series", t[2].fill !== t[0].fill);
+  check("repeats of one title share its colour", t[2].fill === t[0].fill);
   check("different titles get different slots", !t[1].fill.includes("--s1"));
 }
 

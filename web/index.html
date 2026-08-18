@@ -19,15 +19,7 @@
      applies — hence the swatch beside every title in the queue. */
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100;
   --s5:#e87ba4; --s6:#008300; --s7:#4a3aa7; --s8:#e34948;
-  /* Muted siblings for alternating volumes within one series. Same hue at 35%
-     chroma, so they read as the same family while staying clearly two shades:
-     consecutive dE 11.9, against 4.5 for the darkening this replaces. A shifted
-     *hue* was tried first and cannot work — eight hues already fill the circle,
-     so a 32 degree rotation lands dE 2.3 from a different series' colour.
-     Muting moves toward grey, away from every other hue, so cross-series
-     distance is untouched. */
-  --s1m:#7a93b4; --s2m:#d1a291; --s3m:#92b8a4; --s4m:#dac09c;
-  --s5m:#d8b0bd; --s6m:#6d8d6a; --s7m:#626388; --s8m:#c68f8a;
+
   --s-other:#7A8B93;
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
@@ -38,8 +30,6 @@
      Worst adjacent CVD dE 8.4, normal-vision 19.3, all >= 3:1. */
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
   --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
-  --s1m:#88a1c2; --s2m:#c19383; --s3m:#86a897; --s4m:#c2aa8c;
-  --s5m:#c0909d; --s6m:#6d8d6a; --s7m:#abaacd; --s8m:#cfa09e;
   --s-other:#6E8089;
 }}
 :root[data-theme="dark"]{
@@ -48,8 +38,6 @@
   --hi:#6BBF95; --med:#D8A445; --lo:#D98878;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
   --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
-  --s1m:#88a1c2; --s2m:#c19383; --s3m:#86a897; --s4m:#c2aa8c;
-  --s5m:#c0909d; --s6m:#6d8d6a; --s7m:#abaacd; --s8m:#cfa09e;
   --s-other:#6E8089;
 }
 *{box-sizing:border-box}
@@ -201,7 +189,8 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
   overflow:hidden;margin-top:.5rem}
 /* 2px surface gap between fills, per mark specs — keeps same-series volumes
    readable as separate blocks without needing a second hue. */
-.blk{position:absolute;top:0;bottom:0;border-right:2px solid var(--surface);
+.blk{position:absolute;top:0;bottom:0;
+  border-right:3px solid var(--surface-2);box-shadow:inset -1px 0 0 rgba(0,0,0,.18);
   display:flex;align-items:center;padding:0 .45rem;font-size:.72rem;
   white-space:nowrap;overflow:hidden;color:#fff;
   text-shadow:0 1px 2px rgba(0,0,0,.45)}
@@ -239,7 +228,10 @@ button:focus-visible{outline:2px solid var(--brass);outline-offset:1px}
 /* solid endpoint */
 .dot{position:relative;z-index:1;width:1.55rem;height:1.55rem;border-radius:50%;
   display:flex;align-items:center;justify-content:center;color:#fff;font-weight:500;
-  text-shadow:0 1px 2px rgba(0,0,0,.4)}
+  text-shadow:0 1px 2px rgba(0,0,0,.4);
+  /* a ring in the page colour so back-to-back volumes of one series still read
+     as two distinct endpoints rather than one long blur */
+  box-shadow:0 0 0 2px var(--surface)}
 .day.mid{color:var(--ink)}
 .day.today .num,.day.today .dot{box-shadow:0 0 0 2px var(--brass)}
 .day.today .num{border-radius:50%;width:1.55rem;height:1.55rem;
@@ -509,10 +501,14 @@ function paint(slot, nth) {
     return {fill: "var(--s-other)", wash: "color-mix(in srgb, var(--s-other) 26%, transparent)"};
   }
   const n = (slot % HUES) + 1;
-  // Alternate volumes take a muted sibling of the same hue rather than a darker
-  // shade of it — same family, but clearly two colours instead of two tones.
+  // One colour per series, full stop. Colour answers "which series is this";
+  // which volume it is, is a different variable and belongs in a different
+  // channel — the gap between blocks, the endpoint dots, and the number itself.
+  // Every attempt to encode both in one hue either collided with another series
+  // (a rotated hue lands dE 2.3 from a neighbour, since eight hues already fill
+  // the circle) or just looked like the colour had faded.
   const hue = `var(--s${n})`;
-  const base = nth % 2 ? `var(--s${n}m)` : hue;
+  const base = hue;
   const tier = Math.floor(slot / HUES);
   const wash = `color-mix(in srgb, ${base} 30%, transparent)`;
   if (tier === 0) return {fill: base, wash};
@@ -860,10 +856,13 @@ function renderChart() {
                    (b.rate ? ` · ${Math.round(b.rate.wpm)} wpm (${b.rate.basis})` : "");
       el.title = `${b.title} — ${meta}`;
       el.onclick = () => showDetail(b.title, meta);
-      // Inside the block if it fits, the volume number if it nearly fits,
-      // nothing at all if it doesn't — the lane label already names the series.
-      if (w > 14) el.textContent = b.title;
-      else if (w > 4) el.textContent = b.series_num ? "#" + b.series_num : "";
+      // The lane already names the series, so the block only has to say which
+      // volume. Number first because it survives at any width; the title is a
+      // bonus when there is room.
+      const num = b.series_num ? "#" + b.series_num : "";
+      if (w > 16 && num) el.textContent = `${num} ${b.title}`;
+      else if (w > 14) el.textContent = b.title;
+      else if (w > 3) el.textContent = num;
       lane.appendChild(el);
     });
     g.appendChild(lane);
